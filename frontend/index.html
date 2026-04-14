@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Drug Recommendation System</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="container">
+
+  <h1>Drug Recommendation System</h1>
+  <p class="subtitle">Enter your symptoms and allergy to get a safe drug recommendation</p>
+
+  <!-- INPUT CARD -->
+  <div class="card">
+    <h2>Your Symptoms</h2>
+
+    <div class="search-row">
+      <input
+        type="text"
+        id="symptom-input"
+        placeholder="Type a symptom e.g. itching, fever, cough..."
+        autocomplete="off"
+      />
+      <button onclick="addSymptomFromInput()">Add</button>
+    </div>
+
+    <!-- Suggestions dropdown -->
+    <div class="suggestions" id="suggestions"></div>
+
+    <!-- Selected symptom tags -->
+    <div class="tags" id="tags"></div>
+  </div>
+
+  <!-- ALLERGY CARD -->
+  <div class="card">
+    <h2>Your Allergy</h2>
+    <div class="allergy-row">
+      <button class="allergy-btn active-none" id="btn-none"       onclick="setAllergy('none')">No Allergy</button>
+      <button class="allergy-btn"             id="btn-penicillin" onclick="setAllergy('penicillin')">Penicillin</button>
+      <button class="allergy-btn"             id="btn-sulfa"      onclick="setAllergy('sulfa')">Sulfa</button>
+      <button class="allergy-btn"             id="btn-nsaid"      onclick="setAllergy('nsaid')">NSAID (Ibuprofen / Aspirin)</button>
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <button class="submit-btn" id="submit-btn" onclick="submitPrediction()">
+    Get Diagnosis &amp; Drug Recommendation
+  </button>
+
+  <!-- LOADING -->
+  <div class="loading" id="loading">Analyzing your symptoms...</div>
+
+  <!-- ERROR -->
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <!-- Disease banner -->
+    <div class="disease-banner">
+      <div class="label">Predicted disease</div>
+      <div class="disease-name" id="res-disease"></div>
+      <div class="confidence"   id="res-confidence"></div>
+    </div>
+
+    <!-- Severity -->
+    <div class="card">
+      <h2>Severity</h2>
+      <div class="severity-row">
+        <span class="severity-badge" id="res-severity-badge"></span>
+        <span class="severity-score" id="res-severity-score"></span>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="card">
+      <h2>About this disease</h2>
+      <p class="description-text" id="res-description"></p>
+    </div>
+
+    <!-- Precautions -->
+    <div class="card">
+      <h2>Precautions</h2>
+      <ul class="precaution-list" id="res-precautions"></ul>
+    </div>
+
+    <!-- Drug recommendation -->
+    <div class="card">
+      <h2>Recommended medication</h2>
+      <div class="drug-card" id="drug-card">
+        <div class="drug-name" id="res-drug"></div>
+        <div class="drug-note" id="res-drug-note"></div>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetForm()">Start a new assessment</button>
+  </div>
+
+</div>
+
+<script>
+  const API = "http://127.0.0.1:8000";
+
+  let selectedSymptoms = [];
+  let selectedAllergy  = "none";
+  let allSymptoms      = [];
+
+  // ── Load symptom list from API on page load ──
+  async function loadSymptoms() {
+    try {
+      const res  = await fetch(`${API}/symptoms`);
+      const data = await res.json();
+      // Store in underscore format for validation, display with spaces
+      allSymptoms = data.symptoms;
+    } catch (e) {
+      console.error("Could not load symptoms from API", e);
+    }
+  }
+
+  loadSymptoms();
+
+  // ── Symptom search & autocomplete ──
+  document.getElementById("symptom-input").addEventListener("input", function () {
+    const query = this.value.trim().toLowerCase().replace(/ /g, "_");
+    const box   = document.getElementById("suggestions");
+
+    if (query.length < 2) { box.style.display = "none"; return; }
+
+    const matches = allSymptoms.filter(s =>
+      s.includes(query) && !selectedSymptoms.includes(s)
+    ).slice(0, 8);
+
+    if (matches.length === 0) { box.style.display = "none"; return; }
+
+    box.innerHTML = matches.map(s =>
+      `<div class="suggestion-item" onclick="addSymptom('${s}')">${s.replace(/_/g, " ")}</div>`
+    ).join("");
+    box.style.display = "block";
+  });
+
+  document.getElementById("symptom-input").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addSymptomFromInput();
+  });
+
+  // Close suggestions when clicking outside
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest(".search-row") && !e.target.closest(".suggestions")) {
+      document.getElementById("suggestions").style.display = "none";
+    }
+  });
+
+  function addSymptomFromInput() {
+    const input = document.getElementById("symptom-input").value.trim();
+    if (input) addSymptom(input.replace(/ /g, "_"));
+  }
+
+  function addSymptom(symptom) {
+    // Normalize to underscore format for validation
+    const clean = symptom.trim().toLowerCase().replace(/ /g, "_");
+    if (!clean) return;
+
+    // Validate — must exist in our known symptom list
+    if (!allSymptoms.includes(clean)) {
+      showError(`"${clean.replace(/_/g, " ")}" is not a recognised symptom. Please pick from the suggestions or type a valid symptom name.`);
+      return;
+    }
+
+    // Prevent duplicates
+    if (selectedSymptoms.includes(clean)) return;
+
+    hideError();
+    selectedSymptoms.push(clean);
+    renderTags();
+
+    document.getElementById("symptom-input").value = "";
+    document.getElementById("suggestions").style.display = "none";
+  }
+
+  function removeSymptom(symptom) {
+    selectedSymptoms = selectedSymptoms.filter(s => s !== symptom);
+    renderTags();
+  }
+
+  function renderTags() {
+    const container = document.getElementById("tags");
+    container.innerHTML = selectedSymptoms.map(s =>
+      `<div class="tag">
+        ${s.replace(/_/g, " ")}
+        <span onclick="removeSymptom('${s}')">&times;</span>
+      </div>`
+    ).join("");
+  }
+
+  // ── Allergy selection ──
+  function setAllergy(value) {
+    selectedAllergy = value;
+    ["none", "penicillin", "sulfa", "nsaid"].forEach(a => {
+      const btn = document.getElementById(`btn-${a}`);
+      btn.classList.remove("active", "active-none");
+    });
+    const btn = document.getElementById(`btn-${value}`);
+    btn.classList.add(value === "none" ? "active-none" : "active");
+  }
+
+  // ── Submit prediction ──
+  async function submitPrediction() {
+    if (selectedSymptoms.length === 0) {
+      showError("Please add at least one symptom before submitting.");
+      return;
+    }
+
+    hideError();
+    showLoading(true);
+    document.getElementById("results").style.display = "none";
+    document.getElementById("submit-btn").disabled = true;
+
+    try {
+      const res = await fetch(`${API}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symptoms: selectedSymptoms,   // already in underscore format
+          allergy:  selectedAllergy
+        })
+      });
+
+      if (!res.ok) throw new Error("API error: " + res.status);
+
+      const data = await res.json();
+      renderResults(data);
+
+    } catch (err) {
+      showError("Could not connect to the API. Make sure the backend is running.");
+      console.error(err);
+    } finally {
+      showLoading(false);
+      document.getElementById("submit-btn").disabled = false;
+    }
+  }
+
+  // ── Render results ──
+  function renderResults(data) {
+    // If the API returned a hard error (no valid symptoms at all)
+    if (data.error) {
+      showError(data.message + " Unrecognised input: " + (data.invalid || []).join(", "));
+      return;
+    }
+
+    // Disease
+    document.getElementById("res-disease").textContent    = data.disease;
+    document.getElementById("res-confidence").textContent = `Confidence: ${data.confidence}`;
+
+    // Severity
+    const level = data.severity.level;
+    const badge = document.getElementById("res-severity-badge");
+    badge.textContent = level;
+    badge.className   = "severity-badge";
+    if (level === "Mild")                badge.classList.add("severity-mild");
+    else if (level === "Moderate")       badge.classList.add("severity-moderate");
+    else if (level.startsWith("Severe")) badge.classList.add("severity-severe");
+    else                                 badge.classList.add("severity-unknown");
+
+    document.getElementById("res-severity-score").textContent =
+      `Severity score: ${data.severity.score} — ${data.severity.symptoms_matched} symptom(s) matched`;
+
+    // Description
+    document.getElementById("res-description").textContent = data.description;
+
+    // Precautions
+    const ul = document.getElementById("res-precautions");
+    ul.innerHTML = data.precautions.map(p => `<li>${p}</li>`).join("");
+
+    // Drug recommendation
+    const drugCard = document.getElementById("drug-card");
+    const noSafe   = data.medication.drug.toLowerCase().includes("no safe");
+    drugCard.className = noSafe ? "drug-card drug-warning" : "drug-card";
+    document.getElementById("res-drug").textContent      = data.medication.drug;
+    document.getElementById("res-drug-note").textContent = data.medication.note;
+
+    // Show warnings for any ignored symptoms
+    if (data.warnings && data.warnings.length > 0) {
+      showError("Note: " + data.warnings.join(". ") + ". Results are based on recognised symptoms only.");
+    } else {
+      hideError();
+    }
+
+    document.getElementById("results").style.display = "block";
+    document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ── Helpers ──
+  function showLoading(show) {
+    document.getElementById("loading").style.display = show ? "block" : "none";
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("error-msg");
+    el.textContent   = msg;
+    el.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("error-msg").style.display = "none";
+  }
+
+  function resetForm() {
+    selectedSymptoms = [];
+    selectedAllergy  = "none";
+    renderTags();
+    setAllergy("none");
+    document.getElementById("results").style.display = "none";
+    hideError();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+disease,drug_name,allergy_flag
+Fungal infection,Fluconazole,none
+Fungal infection,Clotrimazole,none
+Allergy,Cetirizine,none
+Allergy,Loratadine,none
+GERD,Omeprazole,none
+GERD,Ranitidine,none
+Chronic cholestasis,Ursodeoxycholic acid,none
+Chronic cholestasis,Cholestyramine,none
+Drug Reaction,Prednisolone,none
+Drug Reaction,Hydrocortisone,none
+Peptic ulcer disease,Omeprazole,none
+Peptic ulcer disease,Amoxicillin,penicillin
+AIDS,Tenofovir,none
+AIDS,Lamivudine,none
+Diabetes,Metformin,none
+Diabetes,Glipizide,sulfa
+Gastroenteritis,Oral Rehydration Salts,none
+Gastroenteritis,Metronidazole,none
+Bronchial Asthma,Salbutamol,none
+Bronchial Asthma,Prednisolone,none
+Hypertension,Amlodipine,none
+Hypertension,Lisinopril,none
+Migraine,Sumatriptan,none
+Migraine,Ibuprofen,nsaid
+Cervical spondylosis,Ibuprofen,nsaid
+Cervical spondylosis,Physiotherapy,none
+Paralysis (brain hemorrhage),Aspirin,nsaid
+Paralysis (brain hemorrhage),Clopidogrel,none
+Jaundice,Ursodeoxycholic acid,none
+Jaundice,Vitamin K,none
+Malaria,Chloroquine,none
+Malaria,Artemether,none
+Chicken pox,Acyclovir,none
+Chicken pox,Calamine lotion,none
+Dengue,Paracetamol,none
+Dengue,Oral Rehydration Salts,none
+Typhoid,Ciprofloxacin,none
+Typhoid,Azithromycin,none
+hepatitis A,Supportive care,none
+hepatitis A,Vitamin supplements,none
+Hepatitis B,Tenofovir,none
+Hepatitis B,Entecavir,none
+Hepatitis C,Sofosbuvir,none
+Hepatitis C,Ribavirin,none
+Hepatitis D,Pegylated interferon,none
+Hepatitis D,Supportive care,none
+Hepatitis E,Supportive care,none
+Hepatitis E,Rest and hydration,none
+Alcoholic hepatitis,Prednisolone,none
+Alcoholic hepatitis,Pentoxifylline,none
+Tuberculosis,Isoniazid,none
+Tuberculosis,Rifampicin,none
+Common Cold,Paracetamol,none
+Common Cold,Cetirizine,none
+Pneumonia,Amoxicillin,penicillin
+Pneumonia,Azithromycin,none
+Dimorphic hemmorhoids(piles),Hydrocortisone cream,none
+Dimorphic hemmorhoids(piles),Fiber supplements,none
+Heart attack,Aspirin,nsaid
+Heart attack,Clopidogrel,none
+Varicose veins,Compression stockings,none
+Varicose veins,Ibuprofen,nsaid
+Hypothyroidism,Levothyroxine,none
+Hypothyroidism,Liothyronine,none
+Hyperthyroidism,Methimazole,none
+Hyperthyroidism,Propranolol,none
+Hypoglycemia,Glucose tablets,none
+Hypoglycemia,Glucagon,none
+Osteoarthritis,Ibuprofen,nsaid
+Osteoarthritis,Paracetamol,none
+Arthritis,Ibuprofen,nsaid
+Arthritis,Methotrexate,none
+(vertigo) Paroymsal  Positional Vertigo,Meclizine,none
+(vertigo) Paroymsal  Positional Vertigo,Betahistine,none
+Acne,Benzoyl peroxide,none
+Acne,Clindamycin gel,none
+Urinary tract infection,Nitrofurantoin,sulfa
+Urinary tract infection,Ciprofloxacin,none
+Psoriasis,Methotrexate,none
+Psoriasis,Calcipotriol cream,none
+Impetigo,Amoxicillin,penicillin
+Impetigo,Mupirocin cream,none
