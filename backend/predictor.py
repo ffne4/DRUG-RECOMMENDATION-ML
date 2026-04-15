@@ -46,7 +46,7 @@ def get_severity_score(user_symptoms: list) -> dict:
     total = 0
     found = 0
     for symptom in user_symptoms:
-        clean = symptom.strip().lower().replace(" ", "_")
+        clean  = symptom.strip().lower().replace(" ", "_")
         weight = severity_map.get(clean, 0)
         if weight > 0:
             total += weight
@@ -82,22 +82,42 @@ def predict(user_symptoms: list) -> dict:
             "valid":   []
         }
 
-    # Use severity weights in encoding — same as training
+    # Build weighted input vector — same encoding as training
     input_vector = [
         severity_map.get(s, 1) if s in valid_symptoms else 0
         for s in all_symptoms
     ]
     input_array = np.array(input_vector).reshape(1, -1)
 
-    predicted_disease = model.predict(input_array)[0]
-
+    # Get probabilities for all diseases
     probabilities = model.predict_proba(input_array)[0]
-    confidence    = round(max(probabilities) * 100, 2)
+    classes       = model.classes_
+
+    # Sort diseases by probability highest first
+    disease_probs = sorted(
+        zip(classes, probabilities),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    # Top prediction
+    predicted_disease = disease_probs[0][0]
+    confidence        = round(disease_probs[0][1] * 100, 2)
+
+    # Top 3 differential diagnoses
+    top3 = [
+        {
+            "disease":    d,
+            "confidence": f"{round(p * 100, 2)}%"
+        }
+        for d, p in disease_probs[:3]
+    ]
 
     return {
         "error":      False,
         "disease":    predicted_disease,
         "confidence": confidence,
+        "top3":       top3,
         "valid":      valid_symptoms,
         "invalid":    invalid_symptoms
     }

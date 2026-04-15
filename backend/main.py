@@ -4,19 +4,14 @@ from pydantic import BaseModel
 from typing import List
 
 from backend.predictor import predict, get_disease_description, get_precautions, get_severity_score
-from backend.allergy_filter import recommend_drug
-
-# ─────────────────────────────────────────────
-# CREATE THE FASTAPI APP
-# ─────────────────────────────────────────────
+from backend.allergy_filter import recommend_drugs
 
 app = FastAPI(
     title="Drug Recommendation System",
-    description="Enter symptoms and allergies — get disease prediction, description, precautions, severity, and a safe drug recommendation",
-    version="1.0.0"
+    description="Symptom-based disease diagnosis and personalised safe drug recommendation",
+    version="3.0.0"
 )
 
-# Allow the frontend (HTML file) to talk to this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,34 +19,25 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# ─────────────────────────────────────────────
-# DEFINE WHAT THE FRONTEND SENDS US
-# ─────────────────────────────────────────────
 
 class PredictionRequest(BaseModel):
-    symptoms: List[str]   # e.g. ["itching", "skin_rash", "fever"]
-    allergy:  str         # e.g. "penicillin" or "none"
+    symptoms:  List[str]
+    allergy:   str
+    age_group: str = "adult"        # child | adult | elderly
+    gender:    str = "unspecified"  # male | female | unspecified
 
-# ─────────────────────────────────────────────
-# ROUTES
-# ─────────────────────────────────────────────
 
 @app.get("/")
 def root():
-    return {"message": "Drug Recommendation API is running"}
+    return {"message": "Drug Recommendation System API v3.0 is running"}
 
 
 @app.post("/predict")
 def predict_disease(request: PredictionRequest):
-    """
-    Main endpoint. Receives symptoms + allergy,
-    returns disease, description, severity, precautions, and safe drug.
-    """
 
-    # Step 1: Predict — this now validates symptoms first
+    # Step 1 — validate and predict
     prediction = predict(request.symptoms)
 
-    # If no valid symptoms were found, return a clear error
     if prediction.get("error"):
         return {
             "error":   True,
@@ -63,33 +49,51 @@ def predict_disease(request: PredictionRequest):
     confidence = prediction["confidence"]
     invalid    = prediction.get("invalid", [])
 
-    # Step 2: Get the disease description
+    # Step 2 — description
     description = get_disease_description(disease)
 
-    # Step 3: Get precautions
+    # Step 3 — precautions
     precautions = get_precautions(disease)
 
-    # Step 4: Calculate severity score from valid symptoms only
+    # Step 4 — severity
     severity = get_severity_score(prediction["valid"])
 
-    # Step 5: Recommend a safe drug based on allergy
-    drug_info = recommend_drug(disease, request.allergy)
+    # Step 5 — drug regimen with allergy filter + age/gender profile
+    medication = recommend_drugs(
+        disease,
+        request.allergy,
+        request.age_group,
+        request.gender
+    )
 
-    # Step 6: Return everything as JSON
+    # Step 6 — confidence warning
+    confidence_warning = None
+    if confidence < 60:
+        confidence_warning = (
+            "Our confidence in this prediction is low. "
+            "Your symptoms may overlap with multiple conditions. "
+            "Please consult a doctor for a confirmed diagnosis."
+        )
+
+    # Step 7 — emergency flag
+    emergency = severity["level"].startswith("Severe")
+
     return {
-        "error":       False,
-        "disease":     disease,
-        "confidence":  f"{confidence}%",
-        "description": description,
-        "severity":    severity,
-        "precautions": precautions,
-        "medication":  drug_info,
-        "warnings":    [f"'{s}' was not recognised and was ignored" for s in invalid]
+        "error":              False,
+        "disease":            disease,
+        "confidence":         f"{confidence}%",
+        "confidence_warning": confidence_warning,
+        "emergency":          emergency,
+        "description":        description,
+        "severity":           severity,
+        "precautions":        precautions,
+        "medication":         medication,
+        "top3":               prediction.get("top3", []),
+        "warnings":           [f"'{s}' was not recognised and was ignored" for s in invalid]
     }
 
 
 @app.get("/symptoms")
 def list_symptoms():
-    """Returns the full list of known symptoms — useful for the frontend dropdown."""
     from backend.predictor import all_symptoms
     return {"symptoms": all_symptoms}

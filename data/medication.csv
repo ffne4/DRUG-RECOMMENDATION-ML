@@ -1,83 +1,42 @@
-disease,drug_name,allergy_flag
-Fungal infection,Fluconazole,none
-Fungal infection,Clotrimazole,none
-Allergy,Cetirizine,none
-Allergy,Loratadine,none
-GERD,Omeprazole,none
-GERD,Ranitidine,none
-Chronic cholestasis,Ursodeoxycholic acid,none
-Chronic cholestasis,Cholestyramine,none
-Drug Reaction,Prednisolone,none
-Drug Reaction,Hydrocortisone,none
-Peptic ulcer disease,Omeprazole,none
-Peptic ulcer disease,Amoxicillin,penicillin
-AIDS,Tenofovir,none
-AIDS,Lamivudine,none
-Diabetes,Metformin,none
-Diabetes,Glipizide,sulfa
-Gastroenteritis,Oral Rehydration Salts,none
-Gastroenteritis,Metronidazole,none
-Bronchial Asthma,Salbutamol,none
-Bronchial Asthma,Prednisolone,none
-Hypertension,Amlodipine,none
-Hypertension,Lisinopril,none
-Migraine,Sumatriptan,none
-Migraine,Ibuprofen,nsaid
-Cervical spondylosis,Ibuprofen,nsaid
-Cervical spondylosis,Physiotherapy,none
-Paralysis (brain hemorrhage),Aspirin,nsaid
-Paralysis (brain hemorrhage),Clopidogrel,none
-Jaundice,Ursodeoxycholic acid,none
-Jaundice,Vitamin K,none
-Malaria,Chloroquine,none
-Malaria,Artemether,none
-Chicken pox,Acyclovir,none
-Chicken pox,Calamine lotion,none
-Dengue,Paracetamol,none
-Dengue,Oral Rehydration Salts,none
-Typhoid,Ciprofloxacin,none
-Typhoid,Azithromycin,none
-hepatitis A,Supportive care,none
-hepatitis A,Vitamin supplements,none
-Hepatitis B,Tenofovir,none
-Hepatitis B,Entecavir,none
-Hepatitis C,Sofosbuvir,none
-Hepatitis C,Ribavirin,none
-Hepatitis D,Pegylated interferon,none
-Hepatitis D,Supportive care,none
-Hepatitis E,Supportive care,none
-Hepatitis E,Rest and hydration,none
-Alcoholic hepatitis,Prednisolone,none
-Alcoholic hepatitis,Pentoxifylline,none
-Tuberculosis,Isoniazid,none
-Tuberculosis,Rifampicin,none
-Common Cold,Paracetamol,none
-Common Cold,Cetirizine,none
-Pneumonia,Amoxicillin,penicillin
-Pneumonia,Azithromycin,none
-Dimorphic hemmorhoids(piles),Hydrocortisone cream,none
-Dimorphic hemmorhoids(piles),Fiber supplements,none
-Heart attack,Aspirin,nsaid
-Heart attack,Clopidogrel,none
-Varicose veins,Compression stockings,none
-Varicose veins,Ibuprofen,nsaid
-Hypothyroidism,Levothyroxine,none
-Hypothyroidism,Liothyronine,none
-Hyperthyroidism,Methimazole,none
-Hyperthyroidism,Propranolol,none
-Hypoglycemia,Glucose tablets,none
-Hypoglycemia,Glucagon,none
-Osteoarthritis,Ibuprofen,nsaid
-Osteoarthritis,Paracetamol,none
-Arthritis,Ibuprofen,nsaid
-Arthritis,Methotrexate,none
-(vertigo) Paroymsal  Positional Vertigo,Meclizine,none
-(vertigo) Paroymsal  Positional Vertigo,Betahistine,none
-Acne,Benzoyl peroxide,none
-Acne,Clindamycin gel,none
-Urinary tract infection,Nitrofurantoin,sulfa
-Urinary tract infection,Ciprofloxacin,none
-Psoriasis,Methotrexate,none
-Psoriasis,Calcipotriol cream,none
-Impetigo,Amoxicillin,penicillin
-Impetigo,Mupirocin cream,none
+disease,drug_1,drug_1_dosage,drug_1_duration,drug_2,drug_2_dosage,drug_2_duration,drug_3,drug_3_dosage,drug_3_duration,allergy_flag_1,allergy_flag_2,allergy_flag_3
+Fungal infection,Fluconazole,150mg once daily,7 days,Clotrimazole cream,Apply twice daily,14 days,Vitamin B complex,1 tablet daily,30 days,none,none,none
+Allergy,Cetirizine,10mg once daily,7 days,Loratadine,10mg once daily,7 days,Hydrocortisone cream,Apply twice daily,5 days,none,none,none
+GERD,Omeprazole,20mg before meals twice daily,14 days,Antacid suspension,10ml after meals,14 days,Domperidone,10mg before meals,7 days,none,none,none
+Chronic cholestasis,Ursodeoxycholic acid,300mg twice daily,90 days,Cholestyramine,4g twice daily,30 days,Vitamin K,10mg once daily,14 days,none,none,none
+Drug Reaction,Prednisolone,40mg once daily,5 days,Cetirizine,10mg once daily,7 days,Hydrocortisone cream,Apply twice daily,5 days,none,none,none
+Peptic ulcer disease,Omeprazole,20mg twice daily,14 days,Amoxicillin,500mg three times daily,7 days,Metronidazole,400mg twice daily,7 days,none,penicillin,none
+AIDS,Tenofovir,300mg once daily,Lifelong,Lamivudine,150mg twice daily,Lifelong,Efavirenz,600mg once at night,Lifelong,none,none,none
+Diabetes,Metformin,500mg twice daily with meals,90 days,Glipizide,5mg once daily before breakfast,90 days,Vitamin B12,500mcg once daily,90 days,none,sulfa,none
+Gastroenteritis,Oral Rehydration Salts,1 sachet in 200ml water every 4 hours,5 days,Metronidazole,400mg three times daily,5 days,Zinc supplement,20mg once daily,10 days,none,none,none
+Bronchial Asthma,Salbutamol inhaler,2 puffs every 4-6 hours as needed,Ongoing,Budesonide inhaler,200mcg twice daily,Ongoing,Montelukast,10mg once at night,30 days,none,none,none
+Hypertension,Amlodipine,5mg once daily,Lifelong,Lisinopril,10mg once daily,Lifelong,Hydrochlorothiazide,12.5mg once daily,Lifelong,none,none,none
+Migraine,Sumatriptan,50mg at onset of migraine,As needed,Ibuprofen,400mg every 6 hours,3 days,Metoclopramide,10mg at onset,As needed,none,nsaid,none
+Cervical spondylosis,Ibuprofen,400mg three times daily after meals,7 days,Diclofenac gel,Apply three times daily,14 days,Physiotherapy exercises,As prescribed,Ongoing,nsaid,none,none
+Paralysis (brain hemorrhage),Aspirin,75mg once daily,Lifelong,Clopidogrel,75mg once daily,Lifelong,Atorvastatin,40mg once at night,Lifelong,nsaid,none,none
+Jaundice,Ursodeoxycholic acid,300mg twice daily,30 days,Vitamin K,10mg once daily,7 days,Silymarin,140mg three times daily,30 days,none,none,none
+Malaria,Artemether,80mg twice daily,3 days,Lumefantrine,480mg twice daily,3 days,Paracetamol,500mg every 6 hours,3 days,none,none,none
+Chicken pox,Acyclovir,800mg five times daily,7 days,Calamine lotion,Apply on rash four times daily,7 days,Paracetamol,500mg every 6 hours as needed,5 days,none,none,none
+Dengue,Paracetamol,500mg every 6 hours,5 days,Oral Rehydration Salts,1 sachet in 200ml water every 4 hours,5 days,Vitamin C,500mg twice daily,7 days,none,none,none
+Typhoid,Ciprofloxacin,500mg twice daily,14 days,Azithromycin,500mg once daily,7 days,Paracetamol,500mg every 6 hours as needed,5 days,none,none,none
+hepatitis A,Supportive care,Rest and fluids as needed,4 weeks,Vitamin B complex,1 tablet daily,30 days,Paracetamol,500mg every 6 hours as needed,As needed,none,none,none
+Hepatitis B,Tenofovir,300mg once daily,Lifelong,Entecavir,0.5mg once daily,Lifelong,Vitamin E,400IU once daily,90 days,none,none,none
+Hepatitis C,Sofosbuvir,400mg once daily,84 days,Ribavirin,600mg twice daily,84 days,Ledipasvir,90mg once daily,84 days,none,none,none
+Hepatitis D,Pegylated interferon,180mcg once weekly injection,48 weeks,Supportive care,Rest and fluids,Ongoing,Vitamin D,1000IU once daily,90 days,none,none,none
+Hepatitis E,Supportive care,Rest and fluids as needed,4 weeks,Vitamin B complex,1 tablet daily,30 days,Zinc supplement,20mg once daily,14 days,none,none,none
+Alcoholic hepatitis,Prednisolone,40mg once daily,28 days,Pentoxifylline,400mg three times daily,28 days,Thiamine,100mg once daily,30 days,none,none,none
+Tuberculosis,Isoniazid,300mg once daily,180 days,Rifampicin,600mg once daily,180 days,Pyrazinamide,1500mg once daily,60 days,none,none,none
+Common Cold,Paracetamol,500mg every 6 hours as needed,5 days,Cetirizine,10mg once at night,5 days,Vitamin C,500mg twice daily,7 days,none,none,none
+Pneumonia,Amoxicillin,500mg three times daily,7 days,Azithromycin,500mg once daily,5 days,Paracetamol,500mg every 6 hours as needed,5 days,penicillin,none,none
+Dimorphic hemmorhoids(piles),Hydrocortisone cream,Apply twice daily,7 days,Fiber supplements,1 sachet in water twice daily,30 days,Sitz bath,15 minutes twice daily,14 days,none,none,none
+Heart attack,Aspirin,300mg immediately then 75mg daily,Lifelong,Clopidogrel,75mg once daily,Lifelong,Atorvastatin,40mg once at night,Lifelong,nsaid,none,none
+Varicose veins,Compression stockings,Wear daily during waking hours,Ongoing,Ibuprofen,400mg three times daily after meals,5 days,Diosmin,500mg twice daily,60 days,none,nsaid,none
+Hypothyroidism,Levothyroxine,50mcg once daily on empty stomach,Lifelong,Vitamin D,1000IU once daily,90 days,Calcium supplement,500mg twice daily,90 days,none,none,none
+Hyperthyroidism,Methimazole,10mg three times daily,90 days,Propranolol,40mg twice daily,30 days,Vitamin B complex,1 tablet daily,30 days,none,none,none
+Hypoglycemia,Glucose tablets,15g immediately then recheck,As needed,Glucagon injection,1mg injection if unconscious,Emergency use,Complex carbohydrates,As advised,Ongoing,none,none,none
+Osteoarthritis,Paracetamol,500mg every 6 hours as needed,Ongoing,Diclofenac gel,Apply three times daily,14 days,Glucosamine,1500mg once daily,90 days,none,none,none
+Arthritis,Methotrexate,7.5mg once weekly,Lifelong,Folic acid,5mg once weekly opposite day,Lifelong,Ibuprofen,400mg three times daily after meals,14 days,none,none,nsaid
+(vertigo) Paroymsal  Positional Vertigo,Meclizine,25mg three times daily,7 days,Betahistine,16mg twice daily,30 days,Vitamin D,1000IU once daily,90 days,none,none,none
+Acne,Benzoyl peroxide gel,Apply once daily at night,84 days,Clindamycin gel,Apply twice daily,84 days,Doxycycline,100mg once daily,84 days,none,none,none
+Urinary tract infection,Ciprofloxacin,500mg twice daily,7 days,Nitrofurantoin,100mg twice daily,5 days,Cranberry extract,400mg twice daily,14 days,none,sulfa,none
+Psoriasis,Methotrexate,10mg once weekly,Lifelong,Calcipotriol cream,Apply twice daily,28 days,Emollient cream,Apply three times daily,Ongoing,none,none,none
+Impetigo,Mupirocin cream,Apply three times daily,10 days,Amoxicillin,500mg three times daily,7 days,Antiseptic wash,Use twice daily,10 days,none,penicillin,none

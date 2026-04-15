@@ -10,27 +10,42 @@
 <div class="container">
 
   <h1>Drug Recommendation System</h1>
-  <p class="subtitle">Enter your symptoms and allergy to get a safe drug recommendation</p>
+  <p class="subtitle">Enter your symptoms and patient profile to receive a personalised treatment regimen</p>
 
-  <!-- INPUT CARD -->
+  <!-- SYMPTOM CARD -->
   <div class="card">
     <h2>Your Symptoms</h2>
-
     <div class="search-row">
-      <input
-        type="text"
-        id="symptom-input"
+      <input type="text" id="symptom-input"
         placeholder="Type a symptom e.g. itching, fever, cough..."
-        autocomplete="off"
-      />
+        autocomplete="off"/>
       <button onclick="addSymptomFromInput()">Add</button>
     </div>
-
-    <!-- Suggestions dropdown -->
     <div class="suggestions" id="suggestions"></div>
-
-    <!-- Selected symptom tags -->
     <div class="tags" id="tags"></div>
+  </div>
+
+  <!-- PATIENT PROFILE CARD -->
+  <div class="card">
+    <h2>Patient Profile</h2>
+
+    <div class="profile-section">
+      <div class="profile-label">Age Group</div>
+      <div class="profile-options">
+        <button class="profile-btn" id="age-child"   onclick="setAge('child')">Child (under 12)</button>
+        <button class="profile-btn active-profile" id="age-adult"   onclick="setAge('adult')">Adult (12–60)</button>
+        <button class="profile-btn" id="age-elderly" onclick="setAge('elderly')">Elderly (60+)</button>
+      </div>
+    </div>
+
+    <div class="profile-section" style="margin-top:18px">
+      <div class="profile-label">Gender</div>
+      <div class="profile-options">
+        <button class="profile-btn active-profile" id="gender-unspecified" onclick="setGender('unspecified')">Prefer not to say</button>
+        <button class="profile-btn" id="gender-male"        onclick="setGender('male')">Male</button>
+        <button class="profile-btn" id="gender-female"      onclick="setGender('female')">Female</button>
+      </div>
+    </div>
   </div>
 
   <!-- ALLERGY CARD -->
@@ -46,7 +61,7 @@
 
   <!-- SUBMIT -->
   <button class="submit-btn" id="submit-btn" onclick="submitPrediction()">
-    Get Diagnosis &amp; Drug Recommendation
+    Get Diagnosis &amp; Treatment Regimen
   </button>
 
   <!-- LOADING -->
@@ -58,6 +73,19 @@
   <!-- RESULTS -->
   <div class="results" id="results">
 
+    <!-- Emergency banner -->
+    <div class="emergency-banner" id="emergency-banner">
+      <div class="emergency-title">Emergency Warning</div>
+      <div class="emergency-text">
+        Your symptoms indicate a potentially serious condition.
+        Please seek immediate medical attention or go to the nearest hospital.
+        Do not rely solely on this recommendation.
+      </div>
+    </div>
+
+    <!-- Confidence warning -->
+    <div class="confidence-warning" id="confidence-warning"></div>
+
     <!-- Disease banner -->
     <div class="disease-banner">
       <div class="label">Predicted disease</div>
@@ -65,9 +93,16 @@
       <div class="confidence"   id="res-confidence"></div>
     </div>
 
+    <!-- Differential diagnoses -->
+    <div class="card" id="differentials-card">
+      <h2>Differential Diagnoses</h2>
+      <p class="diff-subtitle">Other conditions your symptoms may indicate, ranked by likelihood</p>
+      <div id="differentials-list"></div>
+    </div>
+
     <!-- Severity -->
     <div class="card">
-      <h2>Severity</h2>
+      <h2>Severity Assessment</h2>
       <div class="severity-row">
         <span class="severity-badge" id="res-severity-badge"></span>
         <span class="severity-score" id="res-severity-score"></span>
@@ -76,63 +111,70 @@
 
     <!-- Description -->
     <div class="card">
-      <h2>About this disease</h2>
+      <h2>About This Disease</h2>
       <p class="description-text" id="res-description"></p>
     </div>
 
     <!-- Precautions -->
     <div class="card">
-      <h2>Precautions</h2>
+      <h2>Recommended Precautions</h2>
       <ul class="precaution-list" id="res-precautions"></ul>
     </div>
 
-    <!-- Drug recommendation -->
+    <!-- Treatment Regimen -->
     <div class="card">
-      <h2>Recommended medication</h2>
-      <div class="drug-card" id="drug-card">
-        <div class="drug-name" id="res-drug"></div>
-        <div class="drug-note" id="res-drug-note"></div>
+      <h2>Treatment Regimen</h2>
+      <p class="regimen-note" id="regimen-note"></p>
+      <div class="regimen-grid" id="regimen-grid"></div>
+
+      <!-- Profile notes (age/gender warnings) -->
+      <div id="profile-notes-wrap" style="display:none; margin-top:18px;">
+        <div class="profile-notes-title">Patient Profile Advisories</div>
+        <ul class="profile-notes-list" id="profile-notes-list"></ul>
       </div>
     </div>
 
-    <button class="reset-btn" onclick="resetForm()">Start a new assessment</button>
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      <strong>Medical Disclaimer:</strong> This system is for informational purposes only
+      and does not replace professional medical advice, diagnosis, or treatment.
+      Always consult a qualified healthcare provider before starting any medication.
+      Dosages listed are standard adult references — your doctor may adjust them based
+      on your specific condition, weight, age, and other factors.
+    </div>
+
+    <button class="reset-btn" onclick="resetForm()">Start a New Assessment</button>
   </div>
 
 </div>
-
 <script>
   const API = "http://127.0.0.1:8000";
-
   let selectedSymptoms = [];
   let selectedAllergy  = "none";
+  let selectedAge      = "adult";
+  let selectedGender   = "unspecified";
   let allSymptoms      = [];
 
-  // ── Load symptom list from API on page load ──
   async function loadSymptoms() {
     try {
       const res  = await fetch(`${API}/symptoms`);
       const data = await res.json();
-      // Store in underscore format for validation, display with spaces
       allSymptoms = data.symptoms;
-    } catch (e) {
-      console.error("Could not load symptoms from API", e);
-    }
+    } catch(e) { console.error("Could not load symptoms", e); }
   }
-
   loadSymptoms();
 
-  // ── Symptom search & autocomplete ──
-  document.getElementById("symptom-input").addEventListener("input", function () {
+  // ── Autocomplete ──
+  document.getElementById("symptom-input").addEventListener("input", function() {
     const query = this.value.trim().toLowerCase().replace(/ /g, "_");
     const box   = document.getElementById("suggestions");
-
     if (query.length < 2) { box.style.display = "none"; return; }
 
-    const matches = allSymptoms.filter(s =>
-      s.includes(query) && !selectedSymptoms.includes(s)
-    ).slice(0, 8);
+    const matches = allSymptoms
+      .filter(s => s.includes(query) && !selectedSymptoms.includes(s))
+      .slice(0, 8);
 
-    if (matches.length === 0) { box.style.display = "none"; return; }
+    if (!matches.length) { box.style.display = "none"; return; }
 
     box.innerHTML = matches.map(s =>
       `<div class="suggestion-item" onclick="addSymptom('${s}')">${s.replace(/_/g, " ")}</div>`
@@ -140,52 +182,42 @@
     box.style.display = "block";
   });
 
-  document.getElementById("symptom-input").addEventListener("keydown", function (e) {
+  document.getElementById("symptom-input").addEventListener("keydown", e => {
     if (e.key === "Enter") addSymptomFromInput();
   });
 
-  // Close suggestions when clicking outside
-  document.addEventListener("click", function (e) {
-    if (!e.target.closest(".search-row") && !e.target.closest(".suggestions")) {
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".search-row") && !e.target.closest(".suggestions"))
       document.getElementById("suggestions").style.display = "none";
-    }
   });
 
   function addSymptomFromInput() {
-    const input = document.getElementById("symptom-input").value.trim();
-    if (input) addSymptom(input.replace(/ /g, "_"));
+    const val = document.getElementById("symptom-input").value.trim();
+    if (val) addSymptom(val.replace(/ /g, "_"));
   }
 
   function addSymptom(symptom) {
-    // Normalize to underscore format for validation
     const clean = symptom.trim().toLowerCase().replace(/ /g, "_");
     if (!clean) return;
-
-    // Validate — must exist in our known symptom list
     if (!allSymptoms.includes(clean)) {
-      showError(`"${clean.replace(/_/g, " ")}" is not a recognised symptom. Please pick from the suggestions or type a valid symptom name.`);
+      showError(`"${clean.replace(/_/g, " ")}" is not a recognised symptom. Please select from the suggestions.`);
       return;
     }
-
-    // Prevent duplicates
     if (selectedSymptoms.includes(clean)) return;
-
     hideError();
     selectedSymptoms.push(clean);
     renderTags();
-
     document.getElementById("symptom-input").value = "";
     document.getElementById("suggestions").style.display = "none";
   }
 
-  function removeSymptom(symptom) {
-    selectedSymptoms = selectedSymptoms.filter(s => s !== symptom);
+  function removeSymptom(s) {
+    selectedSymptoms = selectedSymptoms.filter(x => x !== s);
     renderTags();
   }
 
   function renderTags() {
-    const container = document.getElementById("tags");
-    container.innerHTML = selectedSymptoms.map(s =>
+    document.getElementById("tags").innerHTML = selectedSymptoms.map(s =>
       `<div class="tag">
         ${s.replace(/_/g, " ")}
         <span onclick="removeSymptom('${s}')">&times;</span>
@@ -193,24 +225,40 @@
     ).join("");
   }
 
-  // ── Allergy selection ──
+  // ── Age group ──
+  function setAge(value) {
+    selectedAge = value;
+    ["child", "adult", "elderly"].forEach(a => {
+      document.getElementById(`age-${a}`).classList.remove("active-profile");
+    });
+    document.getElementById(`age-${value}`).classList.add("active-profile");
+  }
+
+  // ── Gender ──
+  function setGender(value) {
+    selectedGender = value;
+    ["unspecified", "male", "female"].forEach(g => {
+      document.getElementById(`gender-${g}`).classList.remove("active-profile");
+    });
+    document.getElementById(`gender-${value}`).classList.add("active-profile");
+  }
+
+  // ── Allergy ──
   function setAllergy(value) {
     selectedAllergy = value;
     ["none", "penicillin", "sulfa", "nsaid"].forEach(a => {
-      const btn = document.getElementById(`btn-${a}`);
-      btn.classList.remove("active", "active-none");
+      document.getElementById(`btn-${a}`).classList.remove("active", "active-none");
     });
-    const btn = document.getElementById(`btn-${value}`);
-    btn.classList.add(value === "none" ? "active-none" : "active");
+    document.getElementById(`btn-${value}`)
+      .classList.add(value === "none" ? "active-none" : "active");
   }
 
-  // ── Submit prediction ──
+  // ── Submit ──
   async function submitPrediction() {
-    if (selectedSymptoms.length === 0) {
+    if (!selectedSymptoms.length) {
       showError("Please add at least one symptom before submitting.");
       return;
     }
-
     hideError();
     showLoading(true);
     document.getElementById("results").style.display = "none";
@@ -218,20 +266,18 @@
 
     try {
       const res = await fetch(`${API}/predict`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          symptoms: selectedSymptoms,   // already in underscore format
-          allergy:  selectedAllergy
+          symptoms:  selectedSymptoms,
+          allergy:   selectedAllergy,
+          age_group: selectedAge,
+          gender:    selectedGender
         })
       });
-
-      if (!res.ok) throw new Error("API error: " + res.status);
-
-      const data = await res.json();
-      renderResults(data);
-
-    } catch (err) {
+      if (!res.ok) throw new Error("API error " + res.status);
+      renderResults(await res.json());
+    } catch(err) {
       showError("Could not connect to the API. Make sure the backend is running.");
       console.error(err);
     } finally {
@@ -242,25 +288,53 @@
 
   // ── Render results ──
   function renderResults(data) {
-    // If the API returned a hard error (no valid symptoms at all)
     if (data.error) {
-      showError(data.message + " Unrecognised input: " + (data.invalid || []).join(", "));
+      showError(data.message + " Unrecognised: " + (data.invalid || []).join(", "));
       return;
     }
+
+    // Emergency banner
+    document.getElementById("emergency-banner").style.display =
+      data.emergency ? "block" : "none";
+
+    // Confidence warning
+    const cw = document.getElementById("confidence-warning");
+    cw.textContent   = data.confidence_warning || "";
+    cw.style.display = data.confidence_warning ? "block" : "none";
 
     // Disease
     document.getElementById("res-disease").textContent    = data.disease;
     document.getElementById("res-confidence").textContent = `Confidence: ${data.confidence}`;
+
+    // Differentials
+    const diffCard = document.getElementById("differentials-card");
+    const diffList = document.getElementById("differentials-list");
+    if (data.top3 && data.top3.length > 1) {
+      const labels = ["Most likely", "2nd possibility", "3rd possibility"];
+      diffList.innerHTML = data.top3.map((item, i) => `
+        <div class="diff-item ${i === 0 ? 'diff-top' : ''}">
+          <div class="diff-rank">${labels[i]}</div>
+          <div class="diff-name">${item.disease}</div>
+          <div class="diff-bar-wrap">
+            <div class="diff-bar" style="width:${item.confidence}"></div>
+          </div>
+          <div class="diff-conf">${item.confidence}</div>
+        </div>
+      `).join("");
+      diffCard.style.display = "block";
+    } else {
+      diffCard.style.display = "none";
+    }
 
     // Severity
     const level = data.severity.level;
     const badge = document.getElementById("res-severity-badge");
     badge.textContent = level;
     badge.className   = "severity-badge";
-    if (level === "Mild")                badge.classList.add("severity-mild");
-    else if (level === "Moderate")       badge.classList.add("severity-moderate");
-    else if (level.startsWith("Severe")) badge.classList.add("severity-severe");
-    else                                 badge.classList.add("severity-unknown");
+    if      (level === "Mild")             badge.classList.add("severity-mild");
+    else if (level === "Moderate")         badge.classList.add("severity-moderate");
+    else if (level.startsWith("Severe"))   badge.classList.add("severity-severe");
+    else                                   badge.classList.add("severity-unknown");
 
     document.getElementById("res-severity-score").textContent =
       `Severity score: ${data.severity.score} — ${data.severity.symptoms_matched} symptom(s) matched`;
@@ -269,19 +343,45 @@
     document.getElementById("res-description").textContent = data.description;
 
     // Precautions
-    const ul = document.getElementById("res-precautions");
-    ul.innerHTML = data.precautions.map(p => `<li>${p}</li>`).join("");
+    document.getElementById("res-precautions").innerHTML =
+      data.precautions.map(p => `<li>${p}</li>`).join("");
 
-    // Drug recommendation
-    const drugCard = document.getElementById("drug-card");
-    const noSafe   = data.medication.drug.toLowerCase().includes("no safe");
-    drugCard.className = noSafe ? "drug-card drug-warning" : "drug-card";
-    document.getElementById("res-drug").textContent      = data.medication.drug;
-    document.getElementById("res-drug-note").textContent = data.medication.note;
+    // Regimen
+    document.getElementById("regimen-note").textContent = data.medication.note;
+    const grid = document.getElementById("regimen-grid");
+    if (!data.medication.regimen || !data.medication.regimen.length) {
+      grid.innerHTML = `<p class="no-drug">No safe medication found. Please consult a doctor.</p>`;
+    } else {
+      grid.innerHTML = data.medication.regimen.map(drug => `
+        <div class="drug-item">
+          <div class="drug-role">${drug.role}</div>
+          <div class="drug-name">${drug.drug}</div>
+          <div class="drug-detail">
+            <span class="detail-label">Dosage</span>
+            <span class="detail-value">${drug.dosage}</span>
+          </div>
+          <div class="drug-detail">
+            <span class="detail-label">Duration</span>
+            <span class="detail-value">${drug.duration}</span>
+          </div>
+        </div>
+      `).join("");
+    }
 
-    // Show warnings for any ignored symptoms
-    if (data.warnings && data.warnings.length > 0) {
-      showError("Note: " + data.warnings.join(". ") + ". Results are based on recognised symptoms only.");
+    // Profile notes (age/gender advisories)
+    const pnWrap = document.getElementById("profile-notes-wrap");
+    const pnList = document.getElementById("profile-notes-list");
+    const notes  = data.medication.profile_notes || [];
+    if (notes.length) {
+      pnList.innerHTML   = notes.map(n => `<li>${n}</li>`).join("");
+      pnWrap.style.display = "block";
+    } else {
+      pnWrap.style.display = "none";
+    }
+
+    // Symptom warnings
+    if (data.warnings && data.warnings.length) {
+      showError("Note: " + data.warnings.join(". "));
     } else {
       hideError();
     }
@@ -290,26 +390,26 @@
     document.getElementById("results").scrollIntoView({ behavior: "smooth" });
   }
 
-  // ── Helpers ──
   function showLoading(show) {
     document.getElementById("loading").style.display = show ? "block" : "none";
   }
-
   function showError(msg) {
     const el = document.getElementById("error-msg");
     el.textContent   = msg;
     el.style.display = "block";
   }
-
   function hideError() {
     document.getElementById("error-msg").style.display = "none";
   }
-
   function resetForm() {
     selectedSymptoms = [];
     selectedAllergy  = "none";
+    selectedAge      = "adult";
+    selectedGender   = "unspecified";
     renderTags();
     setAllergy("none");
+    setAge("adult");
+    setGender("unspecified");
     document.getElementById("results").style.display = "none";
     hideError();
     window.scrollTo({ top: 0, behavior: "smooth" });
