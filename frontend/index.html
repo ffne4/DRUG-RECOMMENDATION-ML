@@ -3,157 +3,359 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Drug Recommendation System</title>
+  <title>MediPredict — Drug Recommendation System</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-<div class="container">
 
-  <h1>Drug Recommendation System</h1>
-  <p class="subtitle">Enter your symptoms and patient profile to receive a personalised treatment regimen</p>
-
-  <!-- SYMPTOM CARD -->
-  <div class="card">
-    <h2>Your Symptoms</h2>
-    <div class="search-row">
-      <input type="text" id="symptom-input"
-        placeholder="Type a symptom e.g. itching, fever, cough..."
-        autocomplete="off"/>
-      <button onclick="addSymptomFromInput()">Add</button>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="8" fill="#2b6cb0"/>
+            <path d="M14 6v16M6 14h16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-title">MediPredict</div>
+          <div class="logo-sub">Drug Recommendation System</div>
+        </div>
+      </div>
     </div>
-    <div class="suggestions" id="suggestions"></div>
-    <div class="tags" id="tags"></div>
+  </header>
+
+  <div class="container">
+    <p class="page-intro">
+      Tell us how you have been feeling. We will ask a few targeted follow-up questions
+      to pinpoint your condition and recommend a safe treatment.
+    </p>
+
+    <!-- ══ STEP 1: NARRATIVE ══ -->
+    <div class="card interview-card" id="step-narrative">
+      <div class="step-badge">Step 1 of 3</div>
+      <h2>Describe How You Have Been Feeling</h2>
+      <p class="interview-hint">
+        Write in your own words. For example:
+        <em>"I have had fever since Monday, my body is very weak,
+        I keep vomiting and my eyes have turned yellow."</em>
+        The more detail you give, the better.
+      </p>
+      <textarea id="narrative-input"
+        placeholder="Write here how you have been feeling, when it started, and anything else important..."
+        rows="5"></textarea>
+      <div class="narrative-actions">
+        <button class="extract-btn" id="extract-btn" onclick="startInterview()">
+          Continue &rarr;
+        </button>
+        <button class="skip-link" onclick="jumpToManual()">
+          Skip — I will enter symptoms manually
+        </button>
+      </div>
+      <div class="extract-loading" id="extract-loading">
+        <div class="spinner-small"></div>
+        <span>Reading your description...</span>
+      </div>
+      <div class="extract-error" id="extract-error" style="display:none"></div>
+    </div>
+
+    <!-- ══ STEP 2: SMART INTERVIEW ══ -->
+    <div class="card interview-card" id="step-interview" style="display:none">
+      <div class="step-badge">Step 2 of 3</div>
+      <h2>Follow-up Questions</h2>
+
+      <!-- Candidate diseases panel -->
+      <div class="candidates-panel" id="candidates-panel">
+        <div class="candidates-label">Possible conditions based on your description</div>
+        <div class="candidates-list" id="candidates-list"></div>
+      </div>
+
+      <p class="interview-subtext">
+        Based on what you described, we are asking about symptoms common in these conditions.
+        Please answer honestly — this improves the accuracy of your diagnosis.
+      </p>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-label" id="progress-label">Question 1</div>
+
+      <!-- Question card -->
+      <div class="question-card" id="question-card">
+        <div class="question-icon">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="17" stroke="#4299e1" stroke-width="1.5"/>
+            <path d="M18 12v10M18 24v2" stroke="#4299e1" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="question-text" id="question-text">Loading...</div>
+        <div class="question-hint" id="question-hint"></div>
+        <div class="yn-row">
+          <button class="yn-btn yn-yes" onclick="answerQuestion(true)">Yes, I have this</button>
+          <button class="yn-btn yn-no"  onclick="answerQuestion(false)">No, I do not have this</button>
+        </div>
+      </div>
+
+      <!-- Confirmed so far -->
+      <div class="confirmed-wrap" id="confirmed-wrap" style="display:none">
+        <div class="confirmed-label">Confirmed symptoms</div>
+        <div class="confirmed-chips" id="confirmed-chips"></div>
+      </div>
+
+      <button class="skip-link" style="margin-top:10px" onclick="finishInterview()">
+        Done — show me my diagnosis
+      </button>
+    </div>
+
+    <!-- ══ STEP 3: REVIEW + PROFILE + SUBMIT ══ -->
+    <div id="step-profile" style="display:none">
+
+      <div class="card interview-card">
+        <div class="step-badge">Step 3 of 3</div>
+        <h2>Your Symptoms</h2>
+        <p style="font-size:13px;color:#718096;margin-bottom:12px">
+          These are the symptoms that will be used for your diagnosis.
+          You can remove any that do not apply or add more below.
+        </p>
+        <div class="tags" id="tags">
+          <span class="tags-placeholder">No symptoms confirmed yet</span>
+        </div>
+        <div class="add-more-section">
+          <div class="add-more-label">Add more symptoms</div>
+          <div class="search-row">
+            <input type="text" id="symptom-input"
+              placeholder="Type a symptom e.g. cough, rash..."
+              autocomplete="off"/>
+            <button onclick="addSymptomFromInput()">Add</button>
+          </div>
+          <div class="suggestions" id="suggestions"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Patient Profile</h2>
+        <div class="profile-section">
+          <div class="profile-label">Age Group</div>
+          <div class="profile-options">
+            <button class="profile-btn"                id="age-child"   onclick="setAge('child')">Child (under 12)</button>
+            <button class="profile-btn active-profile"  id="age-adult"  onclick="setAge('adult')">Adult (12–60)</button>
+            <button class="profile-btn"                id="age-elderly" onclick="setAge('elderly')">Elderly (60+)</button>
+          </div>
+        </div>
+        <div class="profile-section" style="margin-top:18px">
+          <div class="profile-label">Gender</div>
+          <div class="profile-options">
+            <button class="profile-btn active-profile" id="gender-unspecified" onclick="setGender('unspecified')">Prefer not to say</button>
+            <button class="profile-btn"                id="gender-male"        onclick="setGender('male')">Male</button>
+            <button class="profile-btn"                id="gender-female"      onclick="setGender('female')">Female</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Your Allergy</h2>
+        <div class="allergy-row">
+          <button class="allergy-btn active-none" id="btn-none"       onclick="setAllergy('none')">No Allergy</button>
+          <button class="allergy-btn"             id="btn-penicillin" onclick="setAllergy('penicillin')">Penicillin</button>
+          <button class="allergy-btn"             id="btn-sulfa"      onclick="setAllergy('sulfa')">Sulfa</button>
+          <button class="allergy-btn"             id="btn-nsaid"      onclick="setAllergy('nsaid')">NSAID (Ibuprofen / Aspirin)</button>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitPrediction()">
+        Get My Diagnosis &amp; Treatment Plan
+      </button>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Analyzing your symptoms...</div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-msg" id="error-msg"></div>
+
+    <!-- RESULTS -->
+    <div class="results" id="results">
+
+      <div class="emergency-banner" id="emergency-banner">
+        <div class="emergency-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2L2 19h18L11 2z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M11 9v4M11 15.5v.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="emergency-title">Emergency Warning</div>
+          <div class="emergency-text" id="emergency-text"></div>
+        </div>
+      </div>
+
+      <div class="confidence-warning" id="confidence-warning"></div>
+
+      <div class="clinical-summary-box" id="clinical-summary-box" style="display:none">
+        <div class="clinical-summary-label">Patient History Summary</div>
+        <div class="clinical-summary-text" id="clinical-summary-text"></div>
+      </div>
+
+      <div class="disease-banner">
+        <div class="label">Predicted disease</div>
+        <div class="disease-name" id="res-disease"></div>
+        <div class="confidence"   id="res-confidence"></div>
+      </div>
+
+      <div class="card" id="differentials-card">
+        <h2>Differential Diagnoses</h2>
+        <p class="diff-subtitle">Other conditions your symptoms may indicate, ranked by likelihood</p>
+        <div id="differentials-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Severity Assessment</h2>
+        <div class="severity-row">
+          <span class="severity-badge" id="res-severity-badge"></span>
+          <span class="severity-score" id="res-severity-score"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>About This Disease</h2>
+        <p class="description-text" id="res-description"></p>
+      </div>
+
+      <div class="card">
+        <h2>Recommended Precautions</h2>
+        <ul class="precaution-list" id="res-precautions"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Treatment Plan</h2>
+        <p class="regimen-note" id="regimen-note"></p>
+        <div class="regimen-grid" id="regimen-grid"></div>
+        <div id="profile-notes-wrap" style="display:none; margin-top:18px;">
+          <div class="profile-notes-title">Important Advisories for Your Profile</div>
+          <ul class="profile-notes-list" id="profile-notes-list"></ul>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Important Notice:</strong> This system is for informational purposes only
+        and does not replace professional medical advice, diagnosis, or treatment.
+        Always consult a qualified healthcare provider before starting any medication.
+      </div>
+
+      <div class="action-row">
+        <button class="download-btn" id="download-btn" onclick="downloadReport()">Download PDF Report</button>
+        <button class="reset-btn" onclick="resetForm()">New Assessment</button>
+      </div>
+
+    </div>
   </div>
 
-  <!-- PATIENT PROFILE CARD -->
-  <div class="card">
-    <h2>Patient Profile</h2>
-
-    <div class="profile-section">
-      <div class="profile-label">Age Group</div>
-      <div class="profile-options">
-        <button class="profile-btn" id="age-child"   onclick="setAge('child')">Child (under 12)</button>
-        <button class="profile-btn active-profile" id="age-adult"   onclick="setAge('adult')">Adult (12–60)</button>
-        <button class="profile-btn" id="age-elderly" onclick="setAge('elderly')">Elderly (60+)</button>
-      </div>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span>MediPredict &copy; 2025 &mdash; For educational and informational use only</span>
+      <span>Always consult a qualified healthcare provider</span>
     </div>
+  </footer>
 
-    <div class="profile-section" style="margin-top:18px">
-      <div class="profile-label">Gender</div>
-      <div class="profile-options">
-        <button class="profile-btn active-profile" id="gender-unspecified" onclick="setGender('unspecified')">Prefer not to say</button>
-        <button class="profile-btn" id="gender-male"        onclick="setGender('male')">Male</button>
-        <button class="profile-btn" id="gender-female"      onclick="setGender('female')">Female</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ALLERGY CARD -->
-  <div class="card">
-    <h2>Your Allergy</h2>
-    <div class="allergy-row">
-      <button class="allergy-btn active-none" id="btn-none"       onclick="setAllergy('none')">No Allergy</button>
-      <button class="allergy-btn"             id="btn-penicillin" onclick="setAllergy('penicillin')">Penicillin</button>
-      <button class="allergy-btn"             id="btn-sulfa"      onclick="setAllergy('sulfa')">Sulfa</button>
-      <button class="allergy-btn"             id="btn-nsaid"      onclick="setAllergy('nsaid')">NSAID (Ibuprofen / Aspirin)</button>
-    </div>
-  </div>
-
-  <!-- SUBMIT -->
-  <button class="submit-btn" id="submit-btn" onclick="submitPrediction()">
-    Get Diagnosis &amp; Treatment Regimen
-  </button>
-
-  <!-- LOADING -->
-  <div class="loading" id="loading">Analyzing your symptoms...</div>
-
-  <!-- ERROR -->
-  <div class="error-msg" id="error-msg"></div>
-
-  <!-- RESULTS -->
-  <div class="results" id="results">
-
-    <!-- Emergency banner -->
-    <div class="emergency-banner" id="emergency-banner">
-      <div class="emergency-title">Emergency Warning</div>
-      <div class="emergency-text">
-        Your symptoms indicate a potentially serious condition.
-        Please seek immediate medical attention or go to the nearest hospital.
-        Do not rely solely on this recommendation.
-      </div>
-    </div>
-
-    <!-- Confidence warning -->
-    <div class="confidence-warning" id="confidence-warning"></div>
-
-    <!-- Disease banner -->
-    <div class="disease-banner">
-      <div class="label">Predicted disease</div>
-      <div class="disease-name" id="res-disease"></div>
-      <div class="confidence"   id="res-confidence"></div>
-    </div>
-
-    <!-- Differential diagnoses -->
-    <div class="card" id="differentials-card">
-      <h2>Differential Diagnoses</h2>
-      <p class="diff-subtitle">Other conditions your symptoms may indicate, ranked by likelihood</p>
-      <div id="differentials-list"></div>
-    </div>
-
-    <!-- Severity -->
-    <div class="card">
-      <h2>Severity Assessment</h2>
-      <div class="severity-row">
-        <span class="severity-badge" id="res-severity-badge"></span>
-        <span class="severity-score" id="res-severity-score"></span>
-      </div>
-    </div>
-
-    <!-- Description -->
-    <div class="card">
-      <h2>About This Disease</h2>
-      <p class="description-text" id="res-description"></p>
-    </div>
-
-    <!-- Precautions -->
-    <div class="card">
-      <h2>Recommended Precautions</h2>
-      <ul class="precaution-list" id="res-precautions"></ul>
-    </div>
-
-    <!-- Treatment Regimen -->
-    <div class="card">
-      <h2>Treatment Regimen</h2>
-      <p class="regimen-note" id="regimen-note"></p>
-      <div class="regimen-grid" id="regimen-grid"></div>
-
-      <!-- Profile notes (age/gender warnings) -->
-      <div id="profile-notes-wrap" style="display:none; margin-top:18px;">
-        <div class="profile-notes-title">Patient Profile Advisories</div>
-        <ul class="profile-notes-list" id="profile-notes-list"></ul>
-      </div>
-    </div>
-
-    <!-- Disclaimer -->
-    <div class="disclaimer">
-      <strong>Medical Disclaimer:</strong> This system is for informational purposes only
-      and does not replace professional medical advice, diagnosis, or treatment.
-      Always consult a qualified healthcare provider before starting any medication.
-      Dosages listed are standard adult references — your doctor may adjust them based
-      on your specific condition, weight, age, and other factors.
-    </div>
-
-    <button class="reset-btn" onclick="resetForm()">Start a New Assessment</button>
-  </div>
-
-</div>
 <script>
   const API = "http://127.0.0.1:8000";
+
   let selectedSymptoms = [];
   let selectedAllergy  = "none";
   let selectedAge      = "adult";
   let selectedGender   = "unspecified";
   let allSymptoms      = [];
+  let lastResult       = null;
+  let clinicalSummary  = "";
+
+  // Interview state
+  let interviewQueue   = [];   // list of symptom names to ask about
+  let currentQuestion  = null;
+  let questionIndex    = 0;
+  let totalQuestions   = 0;
+
+  // Human-readable questions for each symptom
+  const SYMPTOM_QUESTIONS = {
+    "high_fever":                   { q: "Do you have a high fever?",                        hint: "Your body feels very hot, temperature above 38°C" },
+    "mild_fever":                   { q: "Do you have a mild or low fever?",                 hint: "Body feels slightly warm but not burning hot" },
+    "chills":                       { q: "Do you have chills or shivering?",                 hint: "You feel cold and your body shakes even when it is warm" },
+    "sweating":                     { q: "Are you sweating a lot?",                          hint: "Especially at night, or sweating without exercising" },
+    "fatigue":                      { q: "Do you feel very weak or tired?",                  hint: "No energy, body feels heavy, cannot do daily tasks" },
+    "headache":                     { q: "Do you have a headache?",                          hint: "Pain or pressure anywhere in the head" },
+    "nausea":                       { q: "Do you feel like vomiting without actually vomiting?", hint: "Uneasy feeling in the stomach" },
+    "vomiting":                     { q: "Have you been vomiting?",                          hint: "Food or fluid coming back up from the stomach" },
+    "diarrhoea":                    { q: "Do you have diarrhoea (running stomach)?",         hint: "Loose or watery stool, many times a day" },
+    "abdominal_pain":               { q: "Do you have stomach or belly pain?",               hint: "Pain anywhere in the belly area" },
+    "loss_of_appetite":             { q: "Have you lost your appetite?",                     hint: "You do not feel hungry or cannot finish your food" },
+    "cough":                        { q: "Do you have a cough?",                             hint: "A dry or wet cough that keeps coming back" },
+    "breathlessness":               { q: "Do you feel short of breath?",                     hint: "Hard to breathe, even when resting" },
+    "chest_pain":                   { q: "Do you have chest pain or tightness?",             hint: "Pain or discomfort in the chest area" },
+    "skin_rash":                    { q: "Do you have a rash or spots on your skin?",        hint: "Red patches, bumps, or sores appearing on skin" },
+    "itching":                      { q: "Is your skin itching?",                            hint: "You feel the urge to scratch your skin frequently" },
+    "joint_pain":                   { q: "Do your joints hurt?",                             hint: "Pain in knees, elbows, shoulders, wrists, or ankles" },
+    "yellowing_of_eyes":            { q: "Are your eyes turning yellow?",                    hint: "The white part of your eyes looks yellow" },
+    "yellowish_skin":               { q: "Is your skin turning yellow?",                     hint: "Skin has a yellowish colour, especially face or palms" },
+    "dark_urine":                   { q: "Is your urine very dark in colour?",               hint: "Urine is brown, dark yellow, or tea-coloured" },
+    "weight_loss":                  { q: "Have you been losing weight without trying?",      hint: "Getting thinner even though diet has not changed" },
+    "dizziness":                    { q: "Do you feel dizzy or like the room is spinning?",  hint: "Unsteady, or like you might fall" },
+    "blurred_and_distorted_vision": { q: "Is your vision blurred or unclear?",              hint: "Things look fuzzy or you cannot see clearly" },
+    "stiff_neck":                   { q: "Is your neck stiff or painful to move?",           hint: "Hard to turn your head or look down" },
+    "fast_heart_rate":              { q: "Is your heart beating very fast?",                 hint: "Heart pounding or racing in the chest" },
+    "mucoid_sputum":                { q: "Are you coughing up thick phlegm or mucus?",       hint: "Thick fluid comes up when you cough" },
+    "loss_of_balance":              { q: "Do you have trouble keeping your balance?",        hint: "Unsteady when walking or standing" },
+    "swelling_joints":              { q: "Are your joints swollen?",                         hint: "Knees, ankles, or other joints look bigger than normal" },
+    "nodal_skin_eruptions":         { q: "Do you have raised bumps or nodules on your skin?", hint: "Small raised lumps under or on the skin" },
+    "muscle_weakness":              { q: "Do your muscles feel weak?",                       hint: "Cannot lift things normally, or legs feel wobbly" },
+    "burning_micturition":          { q: "Does it burn or hurt when you urinate?",           hint: "Pain or burning feeling when passing urine" },
+    "excessive_hunger":             { q: "Are you feeling extremely hungry all the time?",   hint: "Hungry even shortly after eating" },
+    "dischromic_patches":           { q: "Do you have patches of different colour on your skin?", hint: "Areas lighter or darker than surrounding skin" },
+    "bluish_discolouration":        { q: "Are your lips or fingertips turning bluish?",      hint: "Blue or purple colour on lips, fingernails, or skin" },
+    "runny_nose":                   { q: "Do you have a runny nose?",                        hint: "Fluid keeps dripping from your nose" },
+    "throat_irritation":            { q: "Do you have a sore or scratchy throat?",           hint: "Throat hurts or feels scratchy when swallowing" },
+    "back_pain":                    { q: "Do you have back pain?",                           hint: "Pain in the upper or lower back" },
+    "muscle_pain":                  { q: "Do your muscles ache?",                            hint: "Soreness or pain in the muscles" },
+    "spotting_urination":           { q: "Are you urinating only in very small amounts?",    hint: "Urine comes out in drops or tiny quantities" },
+    "foul_smell_of_urine":          { q: "Does your urine smell unusually strong?",          hint: "Strong unpleasant smell from your urine" },
+    "continuous_feel_of_urine":     { q: "Do you always feel the urge to urinate?",         hint: "Urge to urinate does not go away even after going" },
+    "blood_in_sputum":              { q: "Have you seen blood when you cough?",              hint: "Red or pink colour in what you cough up" },
+    "pallor":                       { q: "Does your skin look unusually pale?",              hint: "Skin, lips, or nails look very light or colourless" },
+    "swollen_legs":                 { q: "Are your legs or feet swollen?",                   hint: "Legs or feet look puffy or bigger than normal" },
+    "enlarged_thyroid":             { q: "Do you have a swelling in the front of your neck?", hint: "A lump or swelling just below the chin area" },
+    "brittle_nails":                { q: "Are your nails breaking or becoming brittle?",     hint: "Nails crack or break easily" },
+    "constipation":                 { q: "Are you having difficulty passing stool?",         hint: "You have not passed stool in more than 2 days" },
+    "irregular_sugar_level":        { q: "Have you been told your blood sugar is irregular?", hint: "Tested and found high or low blood sugar" },
+    "polyuria":                     { q: "Are you urinating very frequently?",               hint: "Going to the toilet to urinate many more times than usual" },
+    "acidity":                      { q: "Do you have heartburn or burning in your chest after eating?", hint: "Burning feeling that moves up from the stomach" },
+    "indigestion":                  { q: "Do you often feel bloated or uncomfortable after eating?", hint: "Food sits heavily in your stomach" },
+    "anxiety":                      { q: "Have you been feeling unusually anxious or worried?", hint: "Restless, nervous, or unable to relax" },
+    "cold_hands_and_feet":          { q: "Do your hands or feet feel unusually cold?",      hint: "Cold even when the weather is warm" },
+    "mood_swings":                  { q: "Have you been having mood swings?",               hint: "Feelings change quickly from happy to sad or angry" },
+    "weight_gain":                  { q: "Have you been gaining weight without a change in diet?", hint: "Getting heavier even though eating the same amount" },
+    "lethargy":                     { q: "Do you feel unusually sluggish or have no motivation?", hint: "Want to do nothing, feel mentally and physically slow" },
+    "shivering":                    { q: "Are you shivering or trembling?",                 hint: "Uncontrollable shaking of the body or limbs" },
+    "stomach_bleeding":             { q: "Have you noticed blood in your stool?",           hint: "Black stool or red blood when you go to the toilet" },
+    "depression":                   { q: "Have you been feeling very sad or hopeless?",     hint: "Feeling down for many days, no interest in anything" },
+    "lack_of_concentration":        { q: "Are you having trouble concentrating or thinking clearly?", hint: "Hard to focus, forgetful, or confused" },
+    "visual_disturbances":          { q: "Are you experiencing any unusual changes in your vision?", hint: "Seeing spots, flashes, or things that are not there" },
+    "redness_of_eyes":              { q: "Are your eyes red or bloodshot?",                 hint: "The white of your eyes looks red or pink" },
+    "watering_from_eyes":           { q: "Are your eyes watering a lot?",                   hint: "Tears or fluid coming from eyes without crying" },
+    "hip_joint_pain":               { q: "Do you have pain in your hip area?",              hint: "Pain in the side of the pelvis or upper thigh area" },
+    "movement_stiffness":           { q: "Do you feel stiff when you move, especially in the morning?", hint: "Takes time to get moving after resting" },
+    "spinning_movements":           { q: "Do you feel like you or the room around you is spinning?", hint: "Vertigo — a sensation of spinning even when still" },
+    "unsteadiness":                 { q: "Do you feel unsteady on your feet?",              hint: "Hard to walk straight, feel like you might fall" },
+    "pus_filled_pimples":           { q: "Do you have pimples with pus on them?",          hint: "Pimples that have a white or yellow centre filled with fluid" },
+    "blackheads":                   { q: "Do you have blackheads on your face?",            hint: "Small black or dark spots, mostly on the nose or forehead" },
+    "scurring":                     { q: "Do you have scarring from old skin problems?",    hint: "Old scars or marks left behind from previous rashes or pimples" },
+  };
+
+  function getQuestion(symptom) {
+    if (SYMPTOM_QUESTIONS[symptom]) return SYMPTOM_QUESTIONS[symptom];
+    return { q: `Do you also have ${symptom.replace(/_/g, " ")}?`, hint: "" };
+  }
 
   async function loadSymptoms() {
     try {
@@ -164,18 +366,170 @@
   }
   loadSymptoms();
 
-  // ── Autocomplete ──
+  // ── STEP 1: Read narrative, extract symptoms, then fetch interview questions ──
+  async function startInterview() {
+    const narrative = document.getElementById("narrative-input").value.trim();
+    if (!narrative || narrative.length < 10) {
+      showExtractError("Please write at least one sentence about how you have been feeling.");
+      return;
+    }
+    hideExtractError();
+    document.getElementById("extract-loading").style.display = "flex";
+    document.getElementById("extract-btn").disabled = true;
+
+    try {
+      // Step A: extract symptoms from narrative
+      const extractRes = await fetch(`${API}/extract-symptoms`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ narrative })
+      });
+      const extractData = await extractRes.json();
+
+      if (extractData.error && (!extractData.extracted || !extractData.extracted.length)) {
+        showExtractError(extractData.error || "No symptoms found. Please add more detail.");
+        return;
+      }
+
+      clinicalSummary  = extractData.summary || "";
+      // Start with extracted symptoms as confirmed
+      selectedSymptoms = [...(extractData.extracted || [])];
+
+      if (!selectedSymptoms.length) {
+        // Nothing extracted — go straight to manual
+        showStep("step-profile");
+        renderTags();
+        return;
+      }
+
+      // Step B: ask backend for targeted interview questions
+      // based on what diseases the current symptoms point to
+      const interviewRes = await fetch(`${API}/interview-questions`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed_symptoms: selectedSymptoms, top_n: 3 })
+      });
+      const interviewData = await interviewRes.json();
+
+      const questions  = interviewData.questions || [];
+      const candidates = interviewData.candidates || [];
+
+      if (!questions.length) {
+        // No follow-up questions needed — go straight to Step 3
+        showStep("step-profile");
+        renderTags();
+        return;
+      }
+
+      // Set up interview queue
+      interviewQueue  = questions;
+      totalQuestions  = questions.length;
+      questionIndex   = 0;
+
+      // Show candidate diseases panel
+      renderCandidates(candidates);
+
+      showStep("step-interview");
+      updateConfirmedChips();
+      askNextQuestion();
+
+    } catch(err) {
+      showExtractError("Could not connect to the server. Make sure the backend is running.");
+    } finally {
+      document.getElementById("extract-loading").style.display = "none";
+      document.getElementById("extract-btn").disabled = false;
+    }
+  }
+
+  function renderCandidates(candidates) {
+    if (!candidates.length) {
+      document.getElementById("candidates-panel").style.display = "none";
+      return;
+    }
+    document.getElementById("candidates-panel").style.display = "block";
+    document.getElementById("candidates-list").innerHTML = candidates.map(c => `
+      <div class="candidate-item">
+        <span class="candidate-name">${c.disease}</span>
+        <span class="candidate-conf">${c.confidence}%</span>
+      </div>
+    `).join("");
+  }
+
+  // ── Ask the next targeted question ──
+  function askNextQuestion() {
+    if (!interviewQueue.length) {
+      finishInterview();
+      return;
+    }
+
+    currentQuestion = interviewQueue.shift();
+    questionIndex++;
+    updateProgress();
+
+    const { q, hint } = getQuestion(currentQuestion);
+    document.getElementById("question-text").textContent = q;
+    const hintEl = document.getElementById("question-hint");
+    hintEl.textContent   = hint;
+    hintEl.style.display = hint ? "block" : "none";
+
+    const card = document.getElementById("question-card");
+    card.classList.remove("question-enter");
+    void card.offsetWidth;
+    card.classList.add("question-enter");
+  }
+
+  function answerQuestion(yes) {
+    if (!currentQuestion) return;
+    if (yes && !selectedSymptoms.includes(currentQuestion)) {
+      selectedSymptoms.push(currentQuestion);
+    }
+    updateConfirmedChips();
+    askNextQuestion();
+  }
+
+  function updateProgress() {
+    const total   = totalQuestions;
+    const percent = total > 0 ? Math.round((questionIndex / total) * 100) : 0;
+    document.getElementById("progress-bar").style.width = `${percent}%`;
+    document.getElementById("progress-label").textContent =
+      `Question ${questionIndex} of ${total}`;
+  }
+
+  function updateConfirmedChips() {
+    const wrap = document.getElementById("confirmed-wrap");
+    if (!selectedSymptoms.length) { wrap.style.display = "none"; return; }
+    wrap.style.display = "block";
+    document.getElementById("confirmed-chips").innerHTML =
+      selectedSymptoms.map(s =>
+        `<span class="confirmed-chip">${s.replace(/_/g, " ")}</span>`
+      ).join("");
+  }
+
+  function finishInterview() {
+    showStep("step-profile");
+    renderTags();
+  }
+
+  function jumpToManual() {
+    selectedSymptoms = [];
+    clinicalSummary  = "";
+    showStep("step-profile");
+    renderTags();
+  }
+
+  function showStep(id) {
+    ["step-narrative","step-interview","step-profile"].forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.style.display = s === id ? "block" : "none";
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ── Manual symptom input ──
   document.getElementById("symptom-input").addEventListener("input", function() {
     const query = this.value.trim().toLowerCase().replace(/ /g, "_");
     const box   = document.getElementById("suggestions");
     if (query.length < 2) { box.style.display = "none"; return; }
-
-    const matches = allSymptoms
-      .filter(s => s.includes(query) && !selectedSymptoms.includes(s))
-      .slice(0, 8);
-
+    const matches = allSymptoms.filter(s => s.includes(query) && !selectedSymptoms.includes(s)).slice(0, 8);
     if (!matches.length) { box.style.display = "none"; return; }
-
     box.innerHTML = matches.map(s =>
       `<div class="suggestion-item" onclick="addSymptom('${s}')">${s.replace(/_/g, " ")}</div>`
     ).join("");
@@ -217,137 +571,145 @@
   }
 
   function renderTags() {
-    document.getElementById("tags").innerHTML = selectedSymptoms.map(s =>
-      `<div class="tag">
-        ${s.replace(/_/g, " ")}
-        <span onclick="removeSymptom('${s}')">&times;</span>
-      </div>`
+    const container = document.getElementById("tags");
+    if (!selectedSymptoms.length) {
+      container.innerHTML = `<span class="tags-placeholder">No symptoms confirmed yet</span>`;
+      return;
+    }
+    container.innerHTML = selectedSymptoms.map(s =>
+      `<div class="tag">${s.replace(/_/g, " ")}<span onclick="removeSymptom('${s}')">&times;</span></div>`
     ).join("");
   }
 
-  // ── Age group ──
-  function setAge(value) {
-    selectedAge = value;
-    ["child", "adult", "elderly"].forEach(a => {
-      document.getElementById(`age-${a}`).classList.remove("active-profile");
-    });
-    document.getElementById(`age-${value}`).classList.add("active-profile");
+  function setAge(v) {
+    selectedAge = v;
+    ["child","adult","elderly"].forEach(a => document.getElementById(`age-${a}`).classList.remove("active-profile"));
+    document.getElementById(`age-${v}`).classList.add("active-profile");
   }
 
-  // ── Gender ──
-  function setGender(value) {
-    selectedGender = value;
-    ["unspecified", "male", "female"].forEach(g => {
-      document.getElementById(`gender-${g}`).classList.remove("active-profile");
-    });
-    document.getElementById(`gender-${value}`).classList.add("active-profile");
+  function setGender(v) {
+    selectedGender = v;
+    ["unspecified","male","female"].forEach(g => document.getElementById(`gender-${g}`).classList.remove("active-profile"));
+    document.getElementById(`gender-${v}`).classList.add("active-profile");
   }
 
-  // ── Allergy ──
-  function setAllergy(value) {
-    selectedAllergy = value;
-    ["none", "penicillin", "sulfa", "nsaid"].forEach(a => {
-      document.getElementById(`btn-${a}`).classList.remove("active", "active-none");
-    });
-    document.getElementById(`btn-${value}`)
-      .classList.add(value === "none" ? "active-none" : "active");
+  function setAllergy(v) {
+    selectedAllergy = v;
+    ["none","penicillin","sulfa","nsaid"].forEach(a => document.getElementById(`btn-${a}`).classList.remove("active","active-none"));
+    document.getElementById(`btn-${v}`).classList.add(v === "none" ? "active-none" : "active");
   }
 
-  // ── Submit ──
   async function submitPrediction() {
-    if (!selectedSymptoms.length) {
-      showError("Please add at least one symptom before submitting.");
-      return;
-    }
+    if (!selectedSymptoms.length) { showError("Please confirm or add at least one symptom."); return; }
     hideError();
     showLoading(true);
     document.getElementById("results").style.display = "none";
     document.getElementById("submit-btn").disabled = true;
+    lastResult = null;
 
     try {
       const res = await fetch(`${API}/predict`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          symptoms:  selectedSymptoms,
-          allergy:   selectedAllergy,
-          age_group: selectedAge,
-          gender:    selectedGender
+          symptoms: selectedSymptoms, allergy: selectedAllergy,
+          age_group: selectedAge, gender: selectedGender
         })
       });
-      if (!res.ok) throw new Error("API error " + res.status);
-      renderResults(await res.json());
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      lastResult = data;
+      renderResults(data);
     } catch(err) {
       showError("Could not connect to the API. Make sure the backend is running.");
-      console.error(err);
     } finally {
       showLoading(false);
       document.getElementById("submit-btn").disabled = false;
     }
   }
 
-  // ── Render results ──
-  function renderResults(data) {
-    if (data.error) {
-      showError(data.message + " Unrecognised: " + (data.invalid || []).join(", "));
-      return;
+  async function downloadReport() {
+    if (!lastResult) return;
+    const btn = document.getElementById("download-btn");
+    btn.textContent = "Generating PDF...";
+    btn.disabled    = true;
+    try {
+      const res = await fetch(`${API}/download-report`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symptoms: selectedSymptoms, allergy: selectedAllergy,
+          age_group: selectedAge, gender: selectedGender,
+          disease: lastResult.disease, confidence: lastResult.confidence,
+          confidence_warning: lastResult.confidence_warning || null,
+          emergency: lastResult.emergency || false,
+          emergency_reason: lastResult.emergency_reason || null,
+          description: lastResult.description, severity: lastResult.severity,
+          precautions: lastResult.precautions, medication: lastResult.medication,
+          top3: lastResult.top3 || [], clinical_summary: clinicalSummary || null
+        })
+      });
+      if (!res.ok) throw new Error("Failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "medipredict_report.pdf"; a.click();
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      showError("Could not generate the PDF report.");
+    } finally {
+      btn.textContent = "Download PDF Report";
+      btn.disabled    = false;
     }
+  }
 
-    // Emergency banner
-    document.getElementById("emergency-banner").style.display =
-      data.emergency ? "block" : "none";
+  function renderResults(data) {
+    if (data.error) { showError(data.message); return; }
 
-    // Confidence warning
+    const eb = document.getElementById("emergency-banner");
+    if (data.emergency) {
+      document.getElementById("emergency-text").textContent = data.emergency_reason || "Please seek immediate medical attention.";
+      eb.style.display = "flex";
+    } else { eb.style.display = "none"; }
+
     const cw = document.getElementById("confidence-warning");
     cw.textContent   = data.confidence_warning || "";
     cw.style.display = data.confidence_warning ? "block" : "none";
 
-    // Disease
+    const csBox = document.getElementById("clinical-summary-box");
+    if (clinicalSummary) {
+      document.getElementById("clinical-summary-text").textContent = clinicalSummary;
+      csBox.style.display = "block";
+    } else { csBox.style.display = "none"; }
+
     document.getElementById("res-disease").textContent    = data.disease;
     document.getElementById("res-confidence").textContent = `Confidence: ${data.confidence}`;
 
-    // Differentials
     const diffCard = document.getElementById("differentials-card");
-    const diffList = document.getElementById("differentials-list");
     if (data.top3 && data.top3.length > 1) {
       const labels = ["Most likely", "2nd possibility", "3rd possibility"];
-      diffList.innerHTML = data.top3.map((item, i) => `
-        <div class="diff-item ${i === 0 ? 'diff-top' : ''}">
+      document.getElementById("differentials-list").innerHTML = data.top3.map((item, i) => `
+        <div class="diff-item ${i===0?'diff-top':''}">
           <div class="diff-rank">${labels[i]}</div>
           <div class="diff-name">${item.disease}</div>
-          <div class="diff-bar-wrap">
-            <div class="diff-bar" style="width:${item.confidence}"></div>
-          </div>
+          <div class="diff-bar-wrap"><div class="diff-bar" style="width:${item.confidence}"></div></div>
           <div class="diff-conf">${item.confidence}</div>
-        </div>
-      `).join("");
+        </div>`).join("");
       diffCard.style.display = "block";
-    } else {
-      diffCard.style.display = "none";
-    }
+    } else { diffCard.style.display = "none"; }
 
-    // Severity
     const level = data.severity.level;
     const badge = document.getElementById("res-severity-badge");
-    badge.textContent = level;
-    badge.className   = "severity-badge";
-    if      (level === "Mild")             badge.classList.add("severity-mild");
-    else if (level === "Moderate")         badge.classList.add("severity-moderate");
-    else if (level.startsWith("Severe"))   badge.classList.add("severity-severe");
-    else                                   badge.classList.add("severity-unknown");
-
+    badge.textContent = level; badge.className = "severity-badge";
+    if      (level==="Mild")           badge.classList.add("severity-mild");
+    else if (level==="Moderate")       badge.classList.add("severity-moderate");
+    else if (level.startsWith("Severe")) badge.classList.add("severity-severe");
+    else                               badge.classList.add("severity-unknown");
     document.getElementById("res-severity-score").textContent =
       `Severity score: ${data.severity.score} — ${data.severity.symptoms_matched} symptom(s) matched`;
 
-    // Description
     document.getElementById("res-description").textContent = data.description;
+    document.getElementById("res-precautions").innerHTML   = data.precautions.map(p=>`<li>${p}</li>`).join("");
+    document.getElementById("regimen-note").textContent    = data.medication.note;
 
-    // Precautions
-    document.getElementById("res-precautions").innerHTML =
-      data.precautions.map(p => `<li>${p}</li>`).join("");
-
-    // Regimen
-    document.getElementById("regimen-note").textContent = data.medication.note;
     const grid = document.getElementById("regimen-grid");
     if (!data.medication.regimen || !data.medication.regimen.length) {
       grid.innerHTML = `<p class="no-drug">No safe medication found. Please consult a doctor.</p>`;
@@ -356,63 +718,39 @@
         <div class="drug-item">
           <div class="drug-role">${drug.role}</div>
           <div class="drug-name">${drug.drug}</div>
-          <div class="drug-detail">
-            <span class="detail-label">Dosage</span>
-            <span class="detail-value">${drug.dosage}</span>
-          </div>
-          <div class="drug-detail">
-            <span class="detail-label">Duration</span>
-            <span class="detail-value">${drug.duration}</span>
-          </div>
-        </div>
-      `).join("");
+          <div class="drug-detail"><span class="detail-label">How to take</span><span class="detail-value">${drug.dosage}</span></div>
+          <div class="drug-detail"><span class="detail-label">For how long</span><span class="detail-value">${drug.duration}</span></div>
+        </div>`).join("");
     }
 
-    // Profile notes (age/gender advisories)
-    const pnWrap = document.getElementById("profile-notes-wrap");
-    const pnList = document.getElementById("profile-notes-list");
     const notes  = data.medication.profile_notes || [];
+    const pnWrap = document.getElementById("profile-notes-wrap");
     if (notes.length) {
-      pnList.innerHTML   = notes.map(n => `<li>${n}</li>`).join("");
+      document.getElementById("profile-notes-list").innerHTML = notes.map(n=>`<li>${n}</li>`).join("");
       pnWrap.style.display = "block";
-    } else {
-      pnWrap.style.display = "none";
-    }
+    } else { pnWrap.style.display = "none"; }
 
-    // Symptom warnings
-    if (data.warnings && data.warnings.length) {
-      showError("Note: " + data.warnings.join(". "));
-    } else {
-      hideError();
-    }
+    if (data.warnings && data.warnings.length) showError("Note: " + data.warnings.join(". "));
+    else hideError();
 
     document.getElementById("results").style.display = "block";
     document.getElementById("results").scrollIntoView({ behavior: "smooth" });
   }
 
-  function showLoading(show) {
-    document.getElementById("loading").style.display = show ? "block" : "none";
-  }
-  function showError(msg) {
-    const el = document.getElementById("error-msg");
-    el.textContent   = msg;
-    el.style.display = "block";
-  }
-  function hideError() {
-    document.getElementById("error-msg").style.display = "none";
-  }
+  function showLoading(show) { document.getElementById("loading").style.display = show?"flex":"none"; }
+  function showError(msg)    { const el=document.getElementById("error-msg"); el.textContent=msg; el.style.display="block"; }
+  function hideError()       { document.getElementById("error-msg").style.display="none"; }
+  function showExtractError(msg) { const el=document.getElementById("extract-error"); el.textContent=msg; el.style.display="block"; }
+  function hideExtractError()    { document.getElementById("extract-error").style.display="none"; }
+
   function resetForm() {
-    selectedSymptoms = [];
-    selectedAllergy  = "none";
-    selectedAge      = "adult";
-    selectedGender   = "unspecified";
-    renderTags();
-    setAllergy("none");
-    setAge("adult");
-    setGender("unspecified");
+    selectedSymptoms=[]; selectedAllergy="none"; selectedAge="adult"; selectedGender="unspecified";
+    lastResult=null; clinicalSummary=""; interviewQueue=[]; questionIndex=0; totalQuestions=0;
+    renderTags(); setAllergy("none"); setAge("adult"); setGender("unspecified");
+    document.getElementById("narrative-input").value = "";
+    document.getElementById("extract-error").style.display = "none";
     document.getElementById("results").style.display = "none";
-    hideError();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    hideError(); showStep("step-narrative");
   }
 </script>
 </body>

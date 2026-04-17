@@ -19,9 +19,8 @@ precaution_df  = pd.read_csv("data/symptom_precaution.csv")
 severity_df    = pd.read_csv("data/Symptom-severity.csv")
 medication_df  = pd.read_csv("data/medication.csv")
 
-# ─────────────────────────────────────────────
-# CLEAN
-# ─────────────────────────────────────────────
+
+# CLEAN data
 
 df.columns             = df.columns.str.strip()
 severity_df.columns    = severity_df.columns.str.strip()
@@ -33,18 +32,18 @@ symptom_cols = [col for col in df.columns if col.startswith("Symptom_")]
 for col in symptom_cols:
     df[col] = df[col].str.strip().str.lower().str.replace(" ", "_")
 
-# ─────────────────────────────────────────────
+
 # BUILD SEVERITY WEIGHT MAP
-# ─────────────────────────────────────────────
+
 
 # symptom -> weight (1-7). Default to 1 if not found.
 severity_map = dict(zip(severity_df["Symptom"], severity_df["weight"]))
 
 print(f"Severity weights loaded for {len(severity_map)} symptoms")
 
-# ─────────────────────────────────────────────
+
 # BUILD FULL SYMPTOM LIST
-# ─────────────────────────────────────────────
+
 
 all_symptoms = set()
 for col in symptom_cols:
@@ -53,9 +52,9 @@ all_symptoms = sorted(list(all_symptoms))
 
 print(f"Total unique symptoms: {len(all_symptoms)}")
 
-# ─────────────────────────────────────────────
+
 # BUILD DISEASE -> FULL SYMPTOM SET MAP
-# ─────────────────────────────────────────────
+
 
 disease_symptom_map = {}
 for _, row in df.iterrows():
@@ -71,9 +70,9 @@ for _, row in df.iterrows():
 
 print(f"Diseases found: {len(disease_symptom_map)}")
 
-# ─────────────────────────────────────────────
+
 # ENCODE WITH SEVERITY WEIGHTS (not just 0/1)
-# ─────────────────────────────────────────────
+
 
 def encode_row(present_symptoms):
     """
@@ -85,9 +84,9 @@ def encode_row(present_symptoms):
         for s in all_symptoms
     ]
 
-# ─────────────────────────────────────────────
+
 # DATA AUGMENTATION
-# ─────────────────────────────────────────────
+
 # For each disease, generate extra training rows using random subsets
 # of its full symptom list. This teaches the model to recognize
 # diseases from partial symptom inputs (like real users provide).
@@ -125,9 +124,9 @@ y = np.array(augmented_y)
 print(f"Augmented dataset size: {X.shape[0]} rows, {X.shape[1]} features")
 print(f"Diseases: {len(set(y))}")
 
-# ─────────────────────────────────────────────
+
 # TRAIN / TEST SPLIT
-# ─────────────────────────────────────────────
+
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
@@ -135,9 +134,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 print(f"Training rows: {len(X_train)}, Testing rows: {len(X_test)}")
 
-# ─────────────────────────────────────────────
+
 # TRAIN ENSEMBLE OF THREE MODELS
-# ─────────────────────────────────────────────
 # Each model votes. Majority wins. This gives much higher
 # confidence on partial symptom inputs.
 
@@ -154,17 +152,16 @@ ensemble = VotingClassifier(
 
 ensemble.fit(X_train, y_train)
 
-# ─────────────────────────────────────────────
 # EVALUATE
-# ─────────────────────────────────────────────
+
 
 y_pred   = ensemble.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 print(f"Ensemble model accuracy: {accuracy * 100:.2f}%")
 
-# ─────────────────────────────────────────────
+
 # SAVE
-# ─────────────────────────────────────────────
+
 
 os.makedirs("model", exist_ok=True)
 
