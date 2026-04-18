@@ -15,7 +15,6 @@ from backend.symptom_extractor import extract_symptoms_from_narrative
 
 app = FastAPI(
     title="MediPredict — Drug Recommendation System",
-    description="Symptom-based disease diagnosis and personalised safe drug recommendation",
     version="5.0.0"
 )
 
@@ -27,15 +26,14 @@ app.add_middleware(
 )
 
 # ─────────────────────────────────────────────
-# RATE LIMITING — max 30 requests per minute per IP
+# RATE LIMITING
 # ─────────────────────────────────────────────
 request_counts = defaultdict(list)
 RATE_LIMIT     = 30
-RATE_WINDOW    = 60  # seconds
+RATE_WINDOW    = 60
 
 def check_rate_limit(ip: str):
     now = time.time()
-    # Remove requests older than the window
     request_counts[ip] = [t for t in request_counts[ip] if now - t < RATE_WINDOW]
     if len(request_counts[ip]) >= RATE_LIMIT:
         raise HTTPException(
@@ -45,7 +43,38 @@ def check_rate_limit(ip: str):
     request_counts[ip].append(now)
 
 # ─────────────────────────────────────────────
-# LOAD DISEASE-SYMPTOM MAP AT STARTUP
+# ITEMS THAT ARE NOT REAL PHARMACEUTICAL DRUGS
+# We skip these when checking OpenFDA interactions
+# ─────────────────────────────────────────────
+NON_DRUG_ITEMS = {
+    "oral rehydration salts", "ors", "supportive care", "sitz bath",
+    "compression stockings", "calamine lotion", "physiotherapy",
+    "antiseptic wash", "emollient cream", "complex carbohydrates",
+    "vitamin b complex", "vitamin c", "vitamin d", "vitamin e",
+    "vitamin k", "vitamin b12", "zinc sulphate", "zinc supplement",
+    "glucose tablets", "calcium supplement", "thiamine", "pyridoxine",
+    "folic acid", "fiber supplements", "lactulose syrup", "diosmin",
+    "glucosamine sulphate", "cranberry extract"
+}
+
+def is_pharmaceutical_drug(drug_name: str) -> bool:
+    """Return True only if this is a real pharmaceutical we should check on OpenFDA."""
+    clean = drug_name.lower().strip()
+    # Skip if it matches our non-drug list
+    for non_drug in NON_DRUG_ITEMS:
+        if non_drug in clean:
+            return False
+    # Skip if it contains common non-drug words
+    skip_words = ["sachet", "lotion", "cream", "wash", "stocking",
+                  "care", "therapy", "exercise", "bath", "salt",
+                  "supplement", "complex", "injection given"]
+    for word in skip_words:
+        if word in clean:
+            return False
+    return True
+
+# ─────────────────────────────────────────────
+# LOAD DISEASE-SYMPTOM MAP
 # ─────────────────────────────────────────────
 df = pd.read_csv("data/dataset.csv")
 df.columns = df.columns.str.strip()
@@ -97,49 +126,54 @@ def check_emergency(symptoms: list) -> dict:
 # ─────────────────────────────────────────────
 async def check_drug_interactions(drug_names: list) -> Optional[str]:
     """
-    Queries the OpenFDA API to check for known interactions
-    between the drugs in the recommended regimen.
-    Returns a warning string if interactions are found, else None.
+    Check OpenFDA for known interactions between real pharmaceutical drugs.
+    Non-drug items (ORS, vitamins, lotions, etc.) are skipped.
     """
-    if len(drug_names) < 2:
+    # Filter to only real pharmaceutical drugs
+    real_drugs = [d for d in drug_names if is_pharmaceutical_drug(d)]
+
+    if len(real_drugs) < 2:
         return None
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             warnings = []
-            for i in range(len(drug_names)):
-                for j in range(i + 1, len(drug_names)):
-                    drug_a = drug_names[i].split()[0]  # use first word only
-                    drug_b = drug_names[j].split()[0]
+            for i in range(len(real_drugs)):
+                for j in range(i + 1, len(real_drugs)):
+                    # Use first word of drug name as the search term
+                    drug_a = real_drugs[i].split()[0].lower()
+                    drug_b = real_drugs[j].split()[0].lower()
+
+                    # Skip generic words that would return false positives
+                    if len(drug_a) < 5 or len(drug_b) < 5:
+                        continue
 
                     query = (
                         f"https://api.fda.gov/drug/label.json?"
                         f"search=drug_interactions:{drug_a}+AND+drug_interactions:{drug_b}"
                         f"&limit=1"
                     )
-                    res = await client.get(query)
-                    if res.status_code == 200:
-                        data = res.json()
-                        if data.get("results"):
-                            warnings.append(
-                                f"Possible interaction between {drug_a} and {drug_b} — "
-                                f"ask your pharmacist or doctor before taking both together."
-                            )
+                    try:
+                        res = await client.get(query)
+                        if res.status_code == 200:
+                            data = res.json()
+                            if data.get("results"):
+                                warnings.append(
+                                    f"Possible interaction between {real_drugs[i]} "
+                                    f"and {real_drugs[j]} — ask your pharmacist before "
+                                    f"taking both together."
+                                )
+                    except Exception:
+                        continue
+
             return " | ".join(warnings) if warnings else None
     except Exception:
-        # If OpenFDA is unreachable, return None silently — do not block the prediction
         return None
 
 # ─────────────────────────────────────────────
 # VITAL SIGNS INTERPRETATION
 # ─────────────────────────────────────────────
-def interpret_vitals(temperature: Optional[float],
-                     blood_pressure_systolic: Optional[int],
-                     pulse_rate: Optional[int]) -> dict:
-    """
-    Interprets vital signs and returns additional symptom flags
-    and a clinical note to add to the prediction context.
-    """
+def interpret_vitals(temperature, blood_pressure_systolic, pulse_rate) -> dict:
     flags  = []
     notes  = []
     urgent = False
@@ -147,25 +181,34 @@ def interpret_vitals(temperature: Optional[float],
     if temperature is not None:
         if temperature >= 39.5:
             flags.append("high_fever")
-            notes.append(f"Temperature {temperature}°C — high fever confirmed.")
+            notes.append(f"Temperature {temperature}°C — very high fever confirmed.")
             urgent = True
         elif temperature >= 37.5:
             flags.append("mild_fever")
-            notes.append(f"Temperature {temperature}°C — mild fever present.")
+            notes.append(f"Temperature {temperature}°C — fever present.")
         elif temperature < 36.0:
-            notes.append(f"Temperature {temperature}°C — below normal (hypothermia possible).")
+            notes.append(f"Temperature {temperature}°C — below normal. Seek medical attention.")
             urgent = True
 
     if blood_pressure_systolic is not None:
         if blood_pressure_systolic >= 180:
             flags.append("high_blood_pressure")
-            notes.append(f"Blood pressure {blood_pressure_systolic} mmHg — hypertensive crisis. Seek emergency care.")
+            notes.append(
+                f"Blood pressure {blood_pressure_systolic} mmHg — "
+                f"hypertensive crisis. Seek emergency care immediately."
+            )
             urgent = True
         elif blood_pressure_systolic >= 140:
             flags.append("high_blood_pressure")
-            notes.append(f"Blood pressure {blood_pressure_systolic} mmHg — high blood pressure detected.")
+            notes.append(
+                f"Blood pressure {blood_pressure_systolic} mmHg — "
+                f"high blood pressure detected."
+            )
         elif blood_pressure_systolic < 90:
-            notes.append(f"Blood pressure {blood_pressure_systolic} mmHg — dangerously low. Seek emergency care.")
+            notes.append(
+                f"Blood pressure {blood_pressure_systolic} mmHg — "
+                f"dangerously low. Seek emergency care immediately."
+            )
             urgent = True
 
     if pulse_rate is not None:
@@ -173,28 +216,27 @@ def interpret_vitals(temperature: Optional[float],
             flags.append("fast_heart_rate")
             notes.append(f"Pulse rate {pulse_rate} bpm — fast heart rate detected.")
         elif pulse_rate < 50:
-            notes.append(f"Pulse rate {pulse_rate} bpm — very slow heart rate. Seek medical attention.")
+            notes.append(
+                f"Pulse rate {pulse_rate} bpm — very slow heart rate. "
+                f"Seek medical attention."
+            )
             urgent = True
 
-    return {
-        "symptom_flags": flags,
-        "vitals_notes":  notes,
-        "vitals_urgent": urgent
-    }
+    return {"symptom_flags": flags, "vitals_notes": notes, "vitals_urgent": urgent}
 
 # ─────────────────────────────────────────────
 # REQUEST MODELS
 # ─────────────────────────────────────────────
 class PredictionRequest(BaseModel):
-    symptoms:              List[str]
-    allergy:               str
-    age_group:             str           = "adult"
-    gender:                str           = "unspecified"
-    has_kidney_disease:    bool          = False
-    is_pregnant:           bool          = False
-    temperature:           Optional[float] = None
-    blood_pressure:        Optional[int]   = None
-    pulse_rate:            Optional[int]   = None
+    symptoms:           List[str]
+    allergy:            str
+    age_group:          str           = "adult"
+    gender:             str           = "unspecified"
+    has_kidney_disease: bool          = False
+    is_pregnant:        bool          = False
+    temperature:        Optional[float] = None
+    blood_pressure:     Optional[int]   = None
+    pulse_rate:         Optional[int]   = None
 
 class NarrativeRequest(BaseModel):
     narrative: str
@@ -204,24 +246,24 @@ class InterviewQuestionsRequest(BaseModel):
     top_n: int = 3
 
 class PDFRequest(BaseModel):
-    symptoms:              List[str]
-    allergy:               str
-    age_group:             str           = "adult"
-    gender:                str           = "unspecified"
-    has_kidney_disease:    bool          = False
-    is_pregnant:           bool          = False
-    disease:               str
-    confidence:            str
-    confidence_warning:    Optional[str] = None
-    emergency:             bool          = False
-    emergency_reason:      Optional[str] = None
-    description:           str
-    severity:              dict
-    precautions:           List[str]
-    medication:            dict
-    top3:                  List[dict]    = []
-    clinical_summary:      Optional[str] = None
-    vitals_notes:          List[str]     = []
+    symptoms:           List[str]
+    allergy:            str
+    age_group:          str           = "adult"
+    gender:             str           = "unspecified"
+    has_kidney_disease: bool          = False
+    is_pregnant:        bool          = False
+    disease:            str
+    confidence:         str
+    confidence_warning: Optional[str] = None
+    emergency:          bool          = False
+    emergency_reason:   Optional[str] = None
+    description:        str
+    severity:           dict
+    precautions:        List[str]
+    medication:         dict
+    top3:               List[dict]    = []
+    clinical_summary:   Optional[str] = None
+    vitals_notes:       List[str]     = []
 
 # ─────────────────────────────────────────────
 # ROUTES
@@ -276,19 +318,15 @@ async def get_interview_questions(request: Request, body: InterviewQuestionsRequ
                 symptom_score[symptom] = 0
             symptom_score[symptom] += disease_confidence
 
-    ranked_symptoms = sorted(symptom_score.keys(), key=lambda s: symptom_score[s], reverse=True)
+    ranked = sorted(symptom_score.keys(), key=lambda s: symptom_score[s], reverse=True)
 
-    return {
-        "questions":  ranked_symptoms[:10],
-        "candidates": candidates
-    }
+    return {"questions": ranked[:10], "candidates": candidates}
 
 
 @app.post("/predict")
 async def predict_disease(request: Request, body: PredictionRequest):
     check_rate_limit(request.client.host)
 
-    # Interpret vital signs and add symptom flags
     vitals = interpret_vitals(body.temperature, body.blood_pressure, body.pulse_rate)
     enhanced_symptoms = list(set(body.symptoms + vitals["symptom_flags"]))
 
@@ -309,36 +347,36 @@ async def predict_disease(request: Request, body: PredictionRequest):
     precautions = get_precautions(disease)
     severity    = get_severity_score(prediction["valid"])
     medication  = recommend_drugs(
-        disease,
-        body.allergy,
-        body.age_group,
-        body.gender,
-        body.has_kidney_disease,
-        body.is_pregnant
+        disease, body.allergy, body.age_group, body.gender,
+        body.has_kidney_disease, body.is_pregnant
     )
 
-    # OpenFDA interaction check
-    drug_names = [d["drug"] for d in medication.get("regimen", [])]
+    # OpenFDA interaction check — only on real pharmaceutical drugs
+    drug_names  = [d["drug"] for d in medication.get("regimen", [])]
     fda_warning = await check_drug_interactions(drug_names)
 
-    # Merge FDA warning with our local interaction warning
     local_warning = medication.get("interaction_warning")
-    combined_interaction = None
+    if local_warning and str(local_warning).strip() in ["", "None"]:
+        local_warning = None
+
     if local_warning and fda_warning:
-        combined_interaction = f"{local_warning} | {fda_warning}"
+        combined = f"{local_warning} | {fda_warning}"
     elif local_warning:
-        combined_interaction = local_warning
+        combined = local_warning
     elif fda_warning:
-        combined_interaction = fda_warning
+        combined = fda_warning
+    else:
+        combined = None
 
-    medication["interaction_warning"] = combined_interaction
+    medication["interaction_warning"] = combined
 
+    # Confidence warning — only show if below 60%
     confidence_warning = None
     if confidence < 60:
         confidence_warning = (
-            "Our confidence in this prediction is low. "
-            "Your symptoms may overlap with multiple conditions. "
-            "Please consult a doctor for a confirmed diagnosis."
+            "The confidence score is below 60%. This may be because only a few "
+            "symptoms were confirmed. Adding more symptoms through the interview "
+            "improves accuracy. If unsure, please see a doctor."
         )
 
     severity_emergency = severity["level"].startswith("Severe")
